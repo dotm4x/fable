@@ -1,6 +1,7 @@
 export * from './collections/index.js'
 export * from './events/index.js'
 export * from './game.js'
+export * from './graphics/index.js'
 export type * from './interfaces/index.js'
 export * from './math/index.js'
 export * from './modules/index.js'
