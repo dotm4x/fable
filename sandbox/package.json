@@ -1,0 +1,14 @@
+{
+  "name": "@dotm4x/sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @dotm4x/fable build && tsc -p tsconfig.json",
+    "start": "pnpm build && node dist/index.js",
+    "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dotm4x/fable": "workspace:*"
+  }
+}

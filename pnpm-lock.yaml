@@ -218,6 +218,12 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0(vite@8.3.6(jiti@2.7.0)(yaml@2.9.1))
 
+  sandbox:
+    dependencies:
+      '@dotm4x/fable':
+        specifier: workspace:*
+        version: link:../packages/fable
+
 packages:
 
   '@babel/code-frame@7.29.7':
