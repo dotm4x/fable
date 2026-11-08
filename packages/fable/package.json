@@ -18,5 +18,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
   }
 }
