@@ -138,7 +138,7 @@ export abstract class BaseVector<TVector extends Vector<TVector>> implements Vec
   protected componentAt(components: readonly number[], index: number): number {
     const component = components[index];
     if (component === undefined) {
-      throw new RangeError(`Missing vector component at index ${index}.`);
+      throw new RangeError(`Missing vector component at index ${String(index)}.`);
     }
 
     return component;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Vector2, type Vector } from '../../../../source/index.js';
+
+import { type Vector, Vector2 } from '../../../../source/index.js';
 
 describe('Vector2', () => {
   it('performs arithmetic without mutating its operands', () => {

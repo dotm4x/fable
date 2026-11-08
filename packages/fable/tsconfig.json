@@ -1,7 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "source"
+    "allowJs": true
   },
-  "include": ["source/**/*.ts"]
+  "include": [
+    "source/**/*.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.mjs",
+    "**/*.cjs"
+  ],
+  "exclude": ["**/node_modules", "**/dist", "**/build", "**/coverage"]
 }
