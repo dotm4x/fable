@@ -1,1 +1,1 @@
-export { Destroyable, type DestroyableLifecycle, type ReadOnlyDestroyable } from './destroyable.js';
+export { Destroyable, type DestroyableLifecycle, type ReadOnlyDestroyable } from './destroyable.js'

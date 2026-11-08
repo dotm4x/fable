@@ -1,4 +1,4 @@
-import { BaseVector } from './vector.js';
+import { BaseVector } from './vector.js'
 
 /**
  * An immutable three-dimensional vector with `x`, `y`, and `z` components.
@@ -8,13 +8,13 @@ import { BaseVector } from './vector.js';
  */
 export class Vector3 extends BaseVector<Vector3> {
   /** The horizontal component. */
-  public readonly x: number;
+  public readonly x: number
 
   /** The vertical component. */
-  public readonly y: number;
+  public readonly y: number
 
   /** The depth component. */
-  public readonly z: number;
+  public readonly z: number
 
   /**
    * Creates a three-dimensional vector.
@@ -24,15 +24,15 @@ export class Vector3 extends BaseVector<Vector3> {
    * @param z - The depth component.
    */
   public constructor(x: number, y: number, z: number) {
-    super();
-    this.x = x;
-    this.y = y;
-    this.z = z;
+    super()
+    this.x = x
+    this.y = y
+    this.z = z
   }
 
   /** @inheritDoc */
   protected get components(): readonly [number, number, number] {
-    return [this.x, this.y, this.z];
+    return [this.x, this.y, this.z]
   }
 
   /** @inheritDoc */
@@ -41,6 +41,6 @@ export class Vector3 extends BaseVector<Vector3> {
       this.componentAt(components, 0),
       this.componentAt(components, 1),
       this.componentAt(components, 2),
-    );
+    )
   }
 }

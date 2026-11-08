@@ -5,5 +5,5 @@
  */
 export interface Identifiable<TIdentifier> {
   /** The unique identifier of this object. */
-  readonly identifier: TIdentifier;
+  readonly identifier: TIdentifier
 }

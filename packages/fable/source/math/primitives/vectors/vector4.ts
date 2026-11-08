@@ -1,4 +1,4 @@
-import { BaseVector } from './vector.js';
+import { BaseVector } from './vector.js'
 
 /**
  * An immutable four-dimensional vector with `x`, `y`, `z`, and `w` components.
@@ -8,16 +8,16 @@ import { BaseVector } from './vector.js';
  */
 export class Vector4 extends BaseVector<Vector4> {
   /** The horizontal component. */
-  public readonly x: number;
+  public readonly x: number
 
   /** The vertical component. */
-  public readonly y: number;
+  public readonly y: number
 
   /** The depth component. */
-  public readonly z: number;
+  public readonly z: number
 
   /** The fourth component. */
-  public readonly w: number;
+  public readonly w: number
 
   /**
    * Creates a four-dimensional vector.
@@ -28,16 +28,16 @@ export class Vector4 extends BaseVector<Vector4> {
    * @param w - The fourth component.
    */
   public constructor(x: number, y: number, z: number, w: number) {
-    super();
-    this.x = x;
-    this.y = y;
-    this.z = z;
-    this.w = w;
+    super()
+    this.x = x
+    this.y = y
+    this.z = z
+    this.w = w
   }
 
   /** @inheritDoc */
   protected get components(): readonly [number, number, number, number] {
-    return [this.x, this.y, this.z, this.w];
+    return [this.x, this.y, this.z, this.w]
   }
 
   /** @inheritDoc */
@@ -47,6 +47,6 @@ export class Vector4 extends BaseVector<Vector4> {
       this.componentAt(components, 1),
       this.componentAt(components, 2),
       this.componentAt(components, 3),
-    );
+    )
   }
 }

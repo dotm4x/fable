@@ -1,18 +1,18 @@
-import { Destroyable, type ReadOnlyDestroyable } from '../primitives/destroyable.js';
+import { Destroyable, type ReadOnlyDestroyable } from '../primitives/destroyable.js'
 
 export type EventArguments<TPayload> = [TPayload] extends [undefined]
   ? []
   : TPayload extends readonly unknown[]
     ? TPayload
-    : [payload: TPayload];
+    : [payload: TPayload]
 
 /** Provides read-only access to the state of an event connection. */
 export interface ReadOnlyEventConnection extends ReadOnlyDestroyable {
   /** Whether this connection remains active after the event fires. */
-  readonly persistent: boolean;
+  readonly persistent: boolean
 
   /** Whether this connection is still active. */
-  readonly connected: boolean;
+  readonly connected: boolean
 }
 
 /**
@@ -33,7 +33,7 @@ export interface ReadOnlyEvent<TPayload = undefined> extends ReadOnlyDestroyable
   connect(
     callback: (...payload: EventArguments<TPayload>) => void,
     persistent?: boolean,
-  ): EventConnection;
+  ): EventConnection
 }
 
 /**
@@ -50,12 +50,12 @@ export class EventConnection extends Destroyable implements ReadOnlyEventConnect
     public readonly persistent: boolean,
     private readonly _onDisconnect: (connection: EventConnection) => void,
   ) {
-    super();
+    super()
   }
 
   /** Whether this connection is still active. */
   public get connected(): boolean {
-    return !this.destroyed;
+    return !this.destroyed
   }
 
   /**
@@ -65,12 +65,12 @@ export class EventConnection extends Destroyable implements ReadOnlyEventConnect
    */
   public disconnect(): void {
     if (!this.destroyed) {
-      this.destroy();
+      this.destroy()
     }
   }
 
   protected override onDestroy(): void {
-    this._onDisconnect(this);
+    this._onDisconnect(this)
   }
 }
 
@@ -88,7 +88,7 @@ export abstract class Event<TPayload = undefined>
   private readonly _connections: Map<
     EventConnection,
     (...payload: EventArguments<TPayload>) => void
-  > = new Map<EventConnection, (...payload: EventArguments<TPayload>) => void>();
+  > = new Map<EventConnection, (...payload: EventArguments<TPayload>) => void>()
 
   /**
    * Connects a callback to this event.
@@ -105,13 +105,13 @@ export abstract class Event<TPayload = undefined>
     callback: (...payload: EventArguments<TPayload>) => void,
     persistent: boolean = true,
   ): EventConnection {
-    this.throwIfDestroyed();
+    this.throwIfDestroyed()
 
     const connection = new EventConnection(persistent, (disconnected) => {
-      this._connections.delete(disconnected);
-    });
-    this._connections.set(connection, callback);
-    return connection;
+      this._connections.delete(disconnected)
+    })
+    this._connections.set(connection, callback)
+    return connection
   }
 
   /**
@@ -120,10 +120,10 @@ export abstract class Event<TPayload = undefined>
    * @throws {@link Error} If this event has been destroyed.
    */
   public clear(): void {
-    this.throwIfDestroyed();
+    this.throwIfDestroyed()
 
     for (const connection of [...this._connections.keys()]) {
-      connection.disconnect();
+      connection.disconnect()
     }
   }
 
@@ -134,22 +134,22 @@ export abstract class Event<TPayload = undefined>
    * @throws {@link Error} If this event has been destroyed.
    */
   protected dispatch(...payload: EventArguments<TPayload>): void {
-    this.throwIfDestroyed();
+    this.throwIfDestroyed()
 
     for (const [connection, callback] of [...this._connections]) {
       if (!connection.connected) {
-        continue;
+        continue
       }
 
       if (!connection.persistent) {
-        connection.disconnect();
+        connection.disconnect()
       }
 
-      callback(...payload);
+      callback(...payload)
     }
   }
 
   protected override onDestroy(): void {
-    this.clear();
+    this.clear()
   }
 }

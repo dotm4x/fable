@@ -49,8 +49,9 @@ Review automated changes before submitting them.
 
 [eslint.config.mjs](./eslint.config.mjs) is the authoritative source for lint rules and
 [.prettierrc.json](./.prettierrc.json) for formatting. Prettier handles formatting; do not
-introduce conflicting ESLint formatting rules. `TODO` and `FIXME` comments are reported as
-warnings, so use them deliberately.
+introduce conflicting ESLint formatting rules. Omit optional semicolons in JavaScript and
+TypeScript; Prettier retains them where needed for correct parsing. `TODO` and `FIXME` comments
+are reported as warnings, so use them deliberately.
 
 ## Workspace packages
 

@@ -1,4 +1,4 @@
-import { type ReadOnlySignal, Signal } from '../events/signal.js';
+import { type ReadOnlySignal, Signal } from '../events/signal.js'
 
 /**
  * A Set that emits signals when its contents change.
@@ -9,20 +9,20 @@ import { type ReadOnlySignal, Signal } from '../events/signal.js';
  * @typeParam TValue - The type of values in the set.
  */
 export class ReactiveSet<TValue> extends Set<TValue> {
-  private readonly _onAdd: Signal<[value: TValue]> = new Signal<[value: TValue]>();
-  private readonly _onDelete: Signal<[value: TValue]> = new Signal<[value: TValue]>();
+  private readonly _onAdd: Signal<[value: TValue]> = new Signal<[value: TValue]>()
+  private readonly _onDelete: Signal<[value: TValue]> = new Signal<[value: TValue]>()
 
   /** Fired with the value added to the set; consumers can subscribe but not emit. */
-  public readonly onAdd: ReadOnlySignal<[value: TValue]> = this._onAdd;
+  public readonly onAdd: ReadOnlySignal<[value: TValue]> = this._onAdd
 
   /** Fired with the value removed from the set; consumers can subscribe but not emit. */
-  public readonly onDelete: ReadOnlySignal<[value: TValue]> = this._onDelete;
+  public readonly onDelete: ReadOnlySignal<[value: TValue]> = this._onDelete
 
   public constructor(values?: Iterable<TValue> | null) {
-    super();
+    super()
     if (values) {
       for (const value of values) {
-        super.add(value);
+        super.add(value)
       }
     }
   }
@@ -35,11 +35,11 @@ export class ReactiveSet<TValue> extends Set<TValue> {
    */
   public override add(value: TValue): this {
     if (!this.has(value)) {
-      super.add(value);
-      this._onAdd.fire(value);
+      super.add(value)
+      this._onAdd.fire(value)
     }
 
-    return this;
+    return this
   }
 
   /**
@@ -50,11 +50,11 @@ export class ReactiveSet<TValue> extends Set<TValue> {
    */
   public override delete(value: TValue): boolean {
     if (!super.delete(value)) {
-      return false;
+      return false
     }
 
-    this._onDelete.fire(value);
-    return true;
+    this._onDelete.fire(value)
+    return true
   }
 
   /**
@@ -64,10 +64,10 @@ export class ReactiveSet<TValue> extends Set<TValue> {
    * subsequent notifications are not delivered.
    */
   public override clear(): void {
-    const values = [...this];
-    super.clear();
+    const values = [...this]
+    super.clear()
     for (const value of values) {
-      this._onDelete.fire(value);
+      this._onDelete.fire(value)
     }
   }
 }

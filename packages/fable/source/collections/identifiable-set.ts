@@ -1,5 +1,5 @@
-import { type ReadOnlySignal, Signal } from '../events/signal.js';
-import { type Identifiable } from '../interfaces/identifiable.js';
+import { type ReadOnlySignal, Signal } from '../events/signal.js'
+import { type Identifiable } from '../interfaces/identifiable.js'
 
 /**
  * A reactive collection of objects indexed by their identifiers.
@@ -14,16 +14,16 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
   private readonly _entries: Map<TValue['identifier'], TValue> = new Map<
     TValue['identifier'],
     TValue
-  >();
+  >()
 
-  private readonly _onAdd: Signal<[value: TValue]> = new Signal<[value: TValue]>();
-  private readonly _onDelete: Signal<[value: TValue]> = new Signal<[value: TValue]>();
+  private readonly _onAdd: Signal<[value: TValue]> = new Signal<[value: TValue]>()
+  private readonly _onDelete: Signal<[value: TValue]> = new Signal<[value: TValue]>()
 
   /** Fired with the object added to the collection. */
-  public readonly onAdd: ReadOnlySignal<[value: TValue]> = this._onAdd;
+  public readonly onAdd: ReadOnlySignal<[value: TValue]> = this._onAdd
 
   /** Fired with the object removed from the collection. */
-  public readonly onDelete: ReadOnlySignal<[value: TValue]> = this._onDelete;
+  public readonly onDelete: ReadOnlySignal<[value: TValue]> = this._onDelete
 
   /**
    * Creates a collection from identifiable objects.
@@ -34,14 +34,14 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
   public constructor(values?: Iterable<TValue> | null) {
     if (values) {
       for (const value of values) {
-        this.add(value);
+        this.add(value)
       }
     }
   }
 
   /** The number of objects in the collection. */
   public get size(): number {
-    return this._entries.size;
+    return this._entries.size
   }
 
   /**
@@ -53,12 +53,12 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    */
   public add(value: TValue): this {
     if (this._entries.has(value.identifier)) {
-      throw new Error('An object with this identifier already exists.');
+      throw new Error('An object with this identifier already exists.')
     }
 
-    this._entries.set(value.identifier, value);
-    this._onAdd.fire(value);
-    return this;
+    this._entries.set(value.identifier, value)
+    this._onAdd.fire(value)
+    return this
   }
 
   /**
@@ -68,7 +68,7 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    * @returns The object, or `undefined` if it is absent.
    */
   public get(identifier: TValue['identifier']): TValue | undefined {
-    return this._entries.get(identifier);
+    return this._entries.get(identifier)
   }
 
   /**
@@ -78,7 +78,7 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    * @returns Whether the identifier is present.
    */
   public has(value: TValue): boolean {
-    return this._entries.has(value.identifier);
+    return this._entries.has(value.identifier)
   }
 
   /**
@@ -88,14 +88,14 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    * @returns Whether an object was removed.
    */
   public delete(value: TValue): boolean {
-    const stored = this._entries.get(value.identifier);
+    const stored = this._entries.get(value.identifier)
     if (stored === undefined) {
-      return false;
+      return false
     }
 
-    this._entries.delete(value.identifier);
-    this._onDelete.fire(stored);
-    return true;
+    this._entries.delete(value.identifier)
+    this._onDelete.fire(stored)
+    return true
   }
 
   /**
@@ -105,10 +105,10 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    * subsequent notifications are not delivered.
    */
   public clear(): void {
-    const values = [...this._entries.values()];
-    this._entries.clear();
+    const values = [...this._entries.values()]
+    this._entries.clear()
     for (const value of values) {
-      this._onDelete.fire(value);
+      this._onDelete.fire(value)
     }
   }
 
@@ -118,11 +118,11 @@ export class IdentifiableSet<TValue extends Identifiable<unknown>> implements It
    * @returns An iterator over the stored objects.
    */
   public values(): IterableIterator<TValue> {
-    return this._entries.values();
+    return this._entries.values()
   }
 
   /** @inheritDoc */
   public [Symbol.iterator](): IterableIterator<TValue> {
-    return this.values();
+    return this.values()
   }
 }

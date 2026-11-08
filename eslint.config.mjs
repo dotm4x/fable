@@ -1,12 +1,12 @@
-import js from '@eslint/js';
-import { defineConfig } from 'eslint/config';
-import eslintConfigPrettier from 'eslint-config-prettier/flat';
-import importPlugin from 'eslint-plugin-import-x';
-import simpleImportSort from 'eslint-plugin-simple-import-sort';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
+import js from '@eslint/js'
+import { defineConfig } from 'eslint/config'
+import eslintConfigPrettier from 'eslint-config-prettier/flat'
+import importPlugin from 'eslint-plugin-import-x'
+import simpleImportSort from 'eslint-plugin-simple-import-sort'
+import globals from 'globals'
+import tseslint from 'typescript-eslint'
 
-const typescriptFiles = ['**/*.{ts,tsx,mts,cts}'];
+const typescriptFiles = ['**/*.{ts,tsx,mts,cts}']
 const namingConvention = [
   'error',
   {
@@ -37,7 +37,7 @@ const namingConvention = [
     custom: { regex: '^(?:is|has|can|should)(?:[A-Z]|$)', match: false },
   },
   { selector: ['variable', 'function', 'parameter', 'memberLike'], format: ['camelCase'] },
-];
+]
 
 export default defineConfig(
   {
@@ -218,4 +218,4 @@ export default defineConfig(
     },
   },
   eslintConfigPrettier,
-);
+)

@@ -1,6 +1,6 @@
-import { Destroyable } from '../primitives/destroyable.js';
+import { Destroyable } from '../primitives/destroyable.js'
 
-import { Event, type EventArguments, type EventConnection, type ReadOnlyEvent } from './event.js';
+import { Event, type EventArguments, type EventConnection, type ReadOnlyEvent } from './event.js'
 
 /**
  * Provides access to a signal's state and subscriptions without exposing emission.
@@ -12,12 +12,12 @@ export interface ReadOnlySignal<TPayload = undefined> extends ReadOnlyEvent<TPay
   connect(
     callback: (...payload: EventArguments<TPayload>) => void,
     persistent?: boolean,
-  ): EventConnection;
+  ): EventConnection
 }
 
 class SignalEvent<TPayload> extends Event<TPayload> {
   public fire(...payload: EventArguments<TPayload>): void {
-    this.dispatch(...payload);
+    this.dispatch(...payload)
   }
 }
 
@@ -30,7 +30,7 @@ class SignalEvent<TPayload> extends Event<TPayload> {
  * @typeParam TPayload - The payload type or a tuple of callback arguments.
  */
 export class Signal<TPayload = undefined> extends Destroyable implements ReadOnlySignal<TPayload> {
-  private readonly _event: SignalEvent<TPayload> = new SignalEvent<TPayload>();
+  private readonly _event: SignalEvent<TPayload> = new SignalEvent<TPayload>()
 
   /**
    * Connects a callback to this signal.
@@ -44,8 +44,8 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
     callback: (...payload: EventArguments<TPayload>) => void,
     persistent: boolean = true,
   ): EventConnection {
-    this.throwIfDestroyed();
-    return this._event.connect(callback, persistent);
+    this.throwIfDestroyed()
+    return this._event.connect(callback, persistent)
   }
 
   /**
@@ -54,8 +54,8 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
    * @throws {@link Error} If this signal has been destroyed.
    */
   public clear(): void {
-    this.throwIfDestroyed();
-    this._event.clear();
+    this.throwIfDestroyed()
+    this._event.clear()
   }
 
   /**
@@ -65,11 +65,11 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
    * @throws {@link Error} If this signal has been destroyed.
    */
   public fire(...payload: EventArguments<TPayload>): void {
-    this.throwIfDestroyed();
-    this._event.fire(...payload);
+    this.throwIfDestroyed()
+    this._event.fire(...payload)
   }
 
   protected override onDestroy(): void {
-    this._event.destroy();
+    this._event.destroy()
   }
 }
