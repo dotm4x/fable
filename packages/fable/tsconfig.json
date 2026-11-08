@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "source"
+  },
+  "include": ["source/**/*.ts"]
+}
