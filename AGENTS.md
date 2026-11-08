@@ -9,3 +9,4 @@
 - Run the relevant checks from [CONTRIBUTING.md](./CONTRIBUTING.md). Report any checks that
   could not be run or failures that remain.
 - Do not suppress type or lint errors as a shortcut; address their cause.
+- Do not add `Co-authored-by` trailers to commit messages.

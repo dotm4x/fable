@@ -57,4 +57,5 @@ Do not commit generated output, dependencies, or secrets.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) messages, for example
 `feat: add input validation` or `fix: handle empty input`. The pre-commit hook formats and lints
-staged files, and the commit-message hook checks the message with Commitlint.
+staged files, and the commit-message hook checks the message with Commitlint. Keep each commit
+focused on one logical change; do not combine unrelated changes in the same commit.
