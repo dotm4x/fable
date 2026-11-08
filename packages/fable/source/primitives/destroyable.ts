@@ -3,7 +3,7 @@
  */
 export interface ReadOnlyDestroyable {
   /** Whether the object has been destroyed. */
-  readonly destroyed: boolean;
+  readonly destroyed: boolean
 }
 
 /**
@@ -15,7 +15,7 @@ export interface DestroyableLifecycle extends ReadOnlyDestroyable {
    *
    * @throws {@link Error} If the object has already been destroyed.
    */
-  destroy(): void;
+  destroy(): void
 }
 
 /**
@@ -25,28 +25,38 @@ export interface DestroyableLifecycle extends ReadOnlyDestroyable {
  * destroyed, it must not be used for further operations.
  */
 export abstract class Destroyable implements DestroyableLifecycle {
-  private _destroyedState: boolean = false;
+  private _destroyedState: boolean = false
+  private _destroyInProgress: boolean = false
 
   /** @inheritDoc */
   public get destroyed(): boolean {
-    return this._destroyedState;
+    return this._destroyedState
   }
 
   /**
    * Destroys this object.
    *
    * The {@link onDestroy} hook is invoked before the object is marked as
-   * destroyed. If the hook throws, the object remains undestroyed.
+   * destroyed. If the hook throws, the object remains undestroyed and can be
+   * retried. Recursive destruction is rejected.
    *
-   * @throws {@link Error} If this object has already been destroyed.
+   * @throws {@link Error} If this object has already been destroyed or destruction is in progress.
    */
   public destroy(): void {
     if (this.destroyed) {
-      throw new Error(`${this.constructor.name} has already been destroyed.`);
+      throw new Error(`${this.constructor.name} has already been destroyed.`)
+    }
+    if (this._destroyInProgress) {
+      throw new Error(`${this.constructor.name} is already being destroyed.`)
     }
 
-    this.onDestroy();
-    this._destroyedState = true;
+    this._destroyInProgress = true
+    try {
+      this.onDestroy()
+      this._destroyedState = true
+    } finally {
+      this._destroyInProgress = false
+    }
   }
 
   /**
@@ -66,7 +76,7 @@ export abstract class Destroyable implements DestroyableLifecycle {
    */
   protected throwIfDestroyed(): void {
     if (this.destroyed) {
-      throw new Error(`${this.constructor.name} is destroyed.`);
+      throw new Error(`${this.constructor.name} is destroyed.`)
     }
   }
 }
