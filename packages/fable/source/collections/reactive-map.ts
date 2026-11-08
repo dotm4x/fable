@@ -10,27 +10,27 @@ import { type ReadOnlySignal, Signal } from '../events/signal.js';
  * @typeParam TValue - The type of values in the map.
  */
 export class ReactiveMap<TKey, TValue> extends Map<TKey, TValue> {
-  private readonly addSignal: Signal<[key: TKey, value: TValue]> = new Signal<
+  private readonly _onAdd: Signal<[key: TKey, value: TValue]> = new Signal<
     [key: TKey, value: TValue]
   >();
 
-  private readonly deleteSignal: Signal<[key: TKey, value: TValue]> = new Signal<
+  private readonly _onDelete: Signal<[key: TKey, value: TValue]> = new Signal<
     [key: TKey, value: TValue]
   >();
 
-  private readonly updateSignal: Signal<[key: TKey, value: TValue, previous: TValue]> = new Signal<
+  private readonly _onUpdate: Signal<[key: TKey, value: TValue, previous: TValue]> = new Signal<
     [key: TKey, value: TValue, previous: TValue]
   >();
 
   /** Fired with the key and value of a new entry. */
-  public readonly onAdd: ReadOnlySignal<[key: TKey, value: TValue]> = this.addSignal;
+  public readonly onAdd: ReadOnlySignal<[key: TKey, value: TValue]> = this._onAdd;
 
   /** Fired with the key and value of a removed entry. */
-  public readonly onDelete: ReadOnlySignal<[key: TKey, value: TValue]> = this.deleteSignal;
+  public readonly onDelete: ReadOnlySignal<[key: TKey, value: TValue]> = this._onDelete;
 
   /** Fired with the key, new value, and previous value of an updated entry. */
   public readonly onUpdate: ReadOnlySignal<[key: TKey, value: TValue, previous: TValue]> =
-    this.updateSignal;
+    this._onUpdate;
 
   public constructor(entries?: Iterable<readonly [TKey, TValue]> | null) {
     super();
@@ -53,14 +53,14 @@ export class ReactiveMap<TKey, TValue> extends Map<TKey, TValue> {
   public override set(key: TKey, value: TValue): this {
     if (!this.has(key)) {
       super.set(key, value);
-      this.addSignal.fire(key, value);
+      this._onAdd.fire(key, value);
       return this;
     }
 
     const previous = super.get(key) as TValue;
     if (!Object.is(previous, value)) {
       super.set(key, value);
-      this.updateSignal.fire(key, value, previous);
+      this._onUpdate.fire(key, value, previous);
     }
 
     return this;
@@ -79,7 +79,7 @@ export class ReactiveMap<TKey, TValue> extends Map<TKey, TValue> {
 
     const value = super.get(key) as TValue;
     super.delete(key);
-    this.deleteSignal.fire(key, value);
+    this._onDelete.fire(key, value);
     return true;
   }
 
@@ -93,7 +93,7 @@ export class ReactiveMap<TKey, TValue> extends Map<TKey, TValue> {
     const entries = [...this];
     super.clear();
     for (const [key, value] of entries) {
-      this.deleteSignal.fire(key, value);
+      this._onDelete.fire(key, value);
     }
   }
 }

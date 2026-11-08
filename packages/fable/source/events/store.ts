@@ -28,28 +28,28 @@ export interface ReadOnlyStore<TValue> extends ReadOnlyEvent<StoreChange<TValue>
  * @typeParam TValue - The type of value held by the store.
  */
 export class Store<TValue> extends Event<StoreChange<TValue>> implements ReadOnlyStore<TValue> {
-  private currentValue: TValue;
+  private _currentValue: TValue;
 
   public constructor(value: TValue) {
     super();
-    this.currentValue = value;
+    this._currentValue = value;
   }
 
   /** Gets or updates the stored value. */
   public get value(): TValue {
     this.throwIfDestroyed();
-    return this.currentValue;
+    return this._currentValue;
   }
 
   public set value(nextValue: TValue) {
     this.throwIfDestroyed();
 
-    const previous = this.currentValue;
+    const previous = this._currentValue;
     if (this.valueEquals(previous, nextValue)) {
       return;
     }
 
-    this.currentValue = nextValue;
+    this._currentValue = nextValue;
     this.dispatch({ previous, value: nextValue });
   }
 

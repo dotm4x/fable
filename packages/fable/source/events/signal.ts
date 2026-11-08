@@ -30,7 +30,7 @@ class SignalEvent<TPayload> extends Event<TPayload> {
  * @typeParam TPayload - The payload type or a tuple of callback arguments.
  */
 export class Signal<TPayload = undefined> extends Destroyable implements ReadOnlySignal<TPayload> {
-  private readonly event: SignalEvent<TPayload> = new SignalEvent<TPayload>();
+  private readonly _event: SignalEvent<TPayload> = new SignalEvent<TPayload>();
 
   /**
    * Connects a callback to this signal.
@@ -45,7 +45,7 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
     persistent: boolean = true,
   ): EventConnection {
     this.throwIfDestroyed();
-    return this.event.connect(callback, persistent);
+    return this._event.connect(callback, persistent);
   }
 
   /**
@@ -55,7 +55,7 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
    */
   public clear(): void {
     this.throwIfDestroyed();
-    this.event.clear();
+    this._event.clear();
   }
 
   /**
@@ -66,10 +66,10 @@ export class Signal<TPayload = undefined> extends Destroyable implements ReadOnl
    */
   public fire(...payload: EventArguments<TPayload>): void {
     this.throwIfDestroyed();
-    this.event.fire(...payload);
+    this._event.fire(...payload);
   }
 
   protected override onDestroy(): void {
-    this.event.destroy();
+    this._event.destroy();
   }
 }

@@ -25,11 +25,11 @@ export interface DestroyableLifecycle extends ReadOnlyDestroyable {
  * destroyed, it must not be used for further operations.
  */
 export abstract class Destroyable implements DestroyableLifecycle {
-  private destroyedState: boolean = false;
+  private _destroyedState: boolean = false;
 
   /** @inheritDoc */
   public get destroyed(): boolean {
-    return this.destroyedState;
+    return this._destroyedState;
   }
 
   /**
@@ -46,7 +46,7 @@ export abstract class Destroyable implements DestroyableLifecycle {
     }
 
     this.onDestroy();
-    this.destroyedState = true;
+    this._destroyedState = true;
   }
 
   /**

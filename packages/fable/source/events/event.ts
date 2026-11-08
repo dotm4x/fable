@@ -44,11 +44,11 @@ export class EventConnection extends Destroyable implements ReadOnlyEventConnect
    * Creates a connection for an event callback.
    *
    * @param persistent - Whether the connection remains active after the event fires.
-   * @param onDisconnect - Removes the connection from its event.
+   * @param _onDisconnect - Removes the connection from its event.
    */
   public constructor(
     public readonly persistent: boolean,
-    private readonly onDisconnect: (connection: EventConnection) => void,
+    private readonly _onDisconnect: (connection: EventConnection) => void,
   ) {
     super();
   }
@@ -70,7 +70,7 @@ export class EventConnection extends Destroyable implements ReadOnlyEventConnect
   }
 
   protected override onDestroy(): void {
-    this.onDisconnect(this);
+    this._onDisconnect(this);
   }
 }
 
@@ -85,7 +85,7 @@ export abstract class Event<TPayload = undefined>
   extends Destroyable
   implements ReadOnlyEvent<TPayload>
 {
-  private readonly connections: Map<
+  private readonly _connections: Map<
     EventConnection,
     (...payload: EventArguments<TPayload>) => void
   > = new Map<EventConnection, (...payload: EventArguments<TPayload>) => void>();
@@ -108,9 +108,9 @@ export abstract class Event<TPayload = undefined>
     this.throwIfDestroyed();
 
     const connection = new EventConnection(persistent, (disconnected) => {
-      this.connections.delete(disconnected);
+      this._connections.delete(disconnected);
     });
-    this.connections.set(connection, callback);
+    this._connections.set(connection, callback);
     return connection;
   }
 
@@ -122,7 +122,7 @@ export abstract class Event<TPayload = undefined>
   public clear(): void {
     this.throwIfDestroyed();
 
-    for (const connection of [...this.connections.keys()]) {
+    for (const connection of [...this._connections.keys()]) {
       connection.disconnect();
     }
   }
@@ -136,7 +136,7 @@ export abstract class Event<TPayload = undefined>
   protected dispatch(...payload: EventArguments<TPayload>): void {
     this.throwIfDestroyed();
 
-    for (const [connection, callback] of [...this.connections]) {
+    for (const [connection, callback] of [...this._connections]) {
       if (!connection.connected) {
         continue;
       }

@@ -17,6 +17,20 @@ const namingConvention = [
   { selector: 'typeLike', format: ['PascalCase'] },
   { selector: 'property', modifiers: ['requiresQuotes'], format: null },
   {
+    selector: ['classProperty', 'parameterProperty'],
+    modifiers: ['private'],
+    types: ['boolean'],
+    format: ['camelCase'],
+    leadingUnderscore: 'require',
+    custom: { regex: '^(?:is|has|can|should)(?:[A-Z]|$)', match: false },
+  },
+  {
+    selector: ['classProperty', 'parameterProperty'],
+    modifiers: ['private'],
+    format: ['camelCase'],
+    leadingUnderscore: 'require',
+  },
+  {
     selector: ['variable', 'parameter', 'property'],
     types: ['boolean'],
     format: ['camelCase'],
