@@ -10,3 +10,5 @@
   could not be run or failures that remain.
 - Do not suppress type or lint errors as a shortcut; address their cause.
 - Do not add `Co-authored-by` trailers to commit messages.
+- Mirror the source directory structure under tests: place tests for each `.ts` source file in
+  its corresponding `.test.ts` file, adding cases there instead of creating redundant test files.
