@@ -1,8 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
-import { Store, type StoreChange } from '../../source/index.js';
+import { type ReadOnlyStore, Store, type StoreChange } from '../../source/index.js';
 
 describe('Store', () => {
+  it('exposes the current value and changes through its read-only interface', () => {
+    expectTypeOf<keyof ReadOnlyStore<number>>().toEqualTypeOf<'connect' | 'destroyed' | 'value'>();
+    expectTypeOf<Pick<ReadOnlyStore<number>, 'value'>>().toEqualTypeOf<{
+      readonly value: number;
+    }>();
+
+    const store = new Store(1);
+    const readOnly: ReadOnlyStore<number> = store;
+    const callback = vi.fn();
+    readOnly.connect(callback);
+
+    store.value = 2;
+    expect(readOnly.value).toBe(2);
+    expect(callback).toHaveBeenCalledWith({ previous: 1, value: 2 });
+  });
+
   it('updates its value and dispatches the previous and new values', () => {
     const store = new Store(1);
     const callback = vi.fn<(change: StoreChange<number>) => void>();

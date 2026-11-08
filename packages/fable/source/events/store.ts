@@ -1,4 +1,4 @@
-import { Event } from './event.js';
+import { Event, type ReadOnlyEvent } from './event.js';
 
 /** Describes a change to a store's value. */
 export interface StoreChange<TValue> {
@@ -10,6 +10,16 @@ export interface StoreChange<TValue> {
 }
 
 /**
+ * Provides read-only access to a store's value and change subscriptions.
+ *
+ * @typeParam TValue - The type of value held by the store.
+ */
+export interface ReadOnlyStore<TValue> extends ReadOnlyEvent<StoreChange<TValue>> {
+  /** The current stored value. */
+  readonly value: TValue;
+}
+
+/**
  * Stores a value and dispatches changes when it is updated.
  *
  * Change notifications are skipped when the previous value considers the
@@ -17,7 +27,7 @@ export interface StoreChange<TValue> {
  *
  * @typeParam TValue - The type of value held by the store.
  */
-export class Store<TValue> extends Event<StoreChange<TValue>> {
+export class Store<TValue> extends Event<StoreChange<TValue>> implements ReadOnlyStore<TValue> {
   private currentValue: TValue;
 
   public constructor(value: TValue) {

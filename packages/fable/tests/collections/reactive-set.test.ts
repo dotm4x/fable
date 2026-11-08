@@ -1,8 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
-import { ReactiveSet } from '../../source/index.js';
+import { ReactiveSet, type ReadOnlySignal } from '../../source/index.js';
 
 describe('ReactiveSet', () => {
+  it('exposes read-only signals and permits disconnecting subscriptions', () => {
+    expectTypeOf<ReactiveSet<number>['onAdd']>().toEqualTypeOf<ReadOnlySignal<[value: number]>>();
+    expectTypeOf<ReactiveSet<number>['onDelete']>().toEqualTypeOf<
+      ReadOnlySignal<[value: number]>
+    >();
+
+    const set = new ReactiveSet<number>();
+    const callback = vi.fn();
+    const connection = set.onAdd.connect(callback);
+
+    set.add(1);
+    connection.disconnect();
+    set.add(2);
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(1);
+  });
+
   it('supports ordinary set operations and emits only for changes', () => {
     const set = new ReactiveSet([1, 2]);
     const onAdd = vi.fn();

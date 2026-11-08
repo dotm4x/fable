@@ -1,4 +1,4 @@
-import { Signal } from '../events/signal.js';
+import { type ReadOnlySignal, Signal } from '../events/signal.js';
 
 /**
  * A Set that emits signals when its contents change.
@@ -9,11 +9,14 @@ import { Signal } from '../events/signal.js';
  * @typeParam TValue - The type of values in the set.
  */
 export class ReactiveSet<TValue> extends Set<TValue> {
-  /** Fired with the value added to the set. */
-  public readonly onAdd: Signal<[value: TValue]> = new Signal<[value: TValue]>();
+  private readonly addSignal: Signal<[value: TValue]> = new Signal<[value: TValue]>();
+  private readonly deleteSignal: Signal<[value: TValue]> = new Signal<[value: TValue]>();
 
-  /** Fired with the value removed from the set. */
-  public readonly onDelete: Signal<[value: TValue]> = new Signal<[value: TValue]>();
+  /** Fired with the value added to the set; consumers can subscribe but not emit. */
+  public readonly onAdd: ReadOnlySignal<[value: TValue]> = this.addSignal;
+
+  /** Fired with the value removed from the set; consumers can subscribe but not emit. */
+  public readonly onDelete: ReadOnlySignal<[value: TValue]> = this.deleteSignal;
 
   public constructor(values?: Iterable<TValue> | null) {
     super();
@@ -33,7 +36,7 @@ export class ReactiveSet<TValue> extends Set<TValue> {
   public override add(value: TValue): this {
     if (!this.has(value)) {
       super.add(value);
-      this.onAdd.fire(value);
+      this.addSignal.fire(value);
     }
 
     return this;
@@ -50,7 +53,7 @@ export class ReactiveSet<TValue> extends Set<TValue> {
       return false;
     }
 
-    this.onDelete.fire(value);
+    this.deleteSignal.fire(value);
     return true;
   }
 
@@ -64,7 +67,7 @@ export class ReactiveSet<TValue> extends Set<TValue> {
     const values = [...this];
     super.clear();
     for (const value of values) {
-      this.onDelete.fire(value);
+      this.deleteSignal.fire(value);
     }
   }
 }

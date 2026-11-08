@@ -1,12 +1,19 @@
 import { Destroyable } from '../primitives/destroyable.js';
 
-import { Event, type EventConnection } from './event.js';
+import { Event, type EventArguments, type EventConnection, type ReadOnlyEvent } from './event.js';
 
-type EventArguments<TPayload> = [TPayload] extends [undefined]
-  ? []
-  : TPayload extends readonly unknown[]
-    ? TPayload
-    : [payload: TPayload];
+/**
+ * Provides access to a signal's state and subscriptions without exposing emission.
+ *
+ * @typeParam TPayload - The payload type or a tuple of callback arguments.
+ */
+export interface ReadOnlySignal<TPayload = undefined> extends ReadOnlyEvent<TPayload> {
+  /** @inheritDoc */
+  connect(
+    callback: (...payload: EventArguments<TPayload>) => void,
+    persistent?: boolean,
+  ): EventConnection;
+}
 
 class SignalEvent<TPayload> extends Event<TPayload> {
   public fire(...payload: EventArguments<TPayload>): void {
@@ -22,7 +29,7 @@ class SignalEvent<TPayload> extends Event<TPayload> {
  *
  * @typeParam TPayload - The payload type or a tuple of callback arguments.
  */
-export class Signal<TPayload = undefined> extends Destroyable {
+export class Signal<TPayload = undefined> extends Destroyable implements ReadOnlySignal<TPayload> {
   private readonly event: SignalEvent<TPayload> = new SignalEvent<TPayload>();
 
   /**

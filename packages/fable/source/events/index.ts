@@ -1,3 +1,8 @@
-export { Event, EventConnection } from './event.js';
-export { Signal } from './signal.js';
-export { Store, type StoreChange } from './store.js';
+export {
+  Event,
+  EventConnection,
+  type ReadOnlyEvent,
+  type ReadOnlyEventConnection,
+} from './event.js';
+export { type ReadOnlySignal, Signal } from './signal.js';
+export { type ReadOnlyStore, Store, type StoreChange } from './store.js';

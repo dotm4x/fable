@@ -1,15 +1,45 @@
-import { Destroyable } from '../primitives/destroyable.js';
+import { Destroyable, type ReadOnlyDestroyable } from '../primitives/destroyable.js';
 
-type EventArguments<TPayload> = [TPayload] extends [undefined]
+export type EventArguments<TPayload> = [TPayload] extends [undefined]
   ? []
   : TPayload extends readonly unknown[]
     ? TPayload
     : [payload: TPayload];
 
+/** Provides read-only access to the state of an event connection. */
+export interface ReadOnlyEventConnection extends ReadOnlyDestroyable {
+  /** Whether this connection remains active after the event fires. */
+  readonly persistent: boolean;
+
+  /** Whether this connection is still active. */
+  readonly connected: boolean;
+}
+
+/**
+ * Provides access to an event's state and subscriptions without exposing
+ * dispatch, bulk disconnection, or destruction.
+ *
+ * @typeParam TPayload - The payload type or a tuple of callback arguments.
+ */
+export interface ReadOnlyEvent<TPayload = undefined> extends ReadOnlyDestroyable {
+  /**
+   * Connects a callback to this event.
+   *
+   * @param callback - The callback to invoke when this event dispatches.
+   * @param persistent - Whether the callback remains connected after dispatch.
+   * @returns A connection that can be used to disconnect the callback.
+   * @throws {@link Error} If this event has been destroyed.
+   */
+  connect(
+    callback: (...payload: EventArguments<TPayload>) => void,
+    persistent?: boolean,
+  ): EventConnection;
+}
+
 /**
  * A handle to a callback registered with an {@link Event}.
  */
-export class EventConnection extends Destroyable {
+export class EventConnection extends Destroyable implements ReadOnlyEventConnection {
   /**
    * Creates a connection for an event callback.
    *
@@ -51,7 +81,10 @@ export class EventConnection extends Destroyable {
  *
  * @typeParam TPayload - The payload type or a tuple of callback arguments.
  */
-export abstract class Event<TPayload = undefined> extends Destroyable {
+export abstract class Event<TPayload = undefined>
+  extends Destroyable
+  implements ReadOnlyEvent<TPayload>
+{
   private readonly connections: Map<
     EventConnection,
     (...payload: EventArguments<TPayload>) => void

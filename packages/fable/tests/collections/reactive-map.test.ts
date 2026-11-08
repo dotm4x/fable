@@ -1,8 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
-import { ReactiveMap } from '../../source/index.js';
+import { ReactiveMap, type ReadOnlySignal } from '../../source/index.js';
 
 describe('ReactiveMap', () => {
+  it('exposes read-only signals for each event', () => {
+    expectTypeOf<ReactiveMap<string, number>['onAdd']>().toEqualTypeOf<
+      ReadOnlySignal<[key: string, value: number]>
+    >();
+    expectTypeOf<ReactiveMap<string, number>['onDelete']>().toEqualTypeOf<
+      ReadOnlySignal<[key: string, value: number]>
+    >();
+    expectTypeOf<ReactiveMap<string, number>['onUpdate']>().toEqualTypeOf<
+      ReadOnlySignal<[key: string, value: number, previous: number]>
+    >();
+  });
+
   it('supports ordinary map operations and emits only for changes', () => {
     const map = new ReactiveMap<string, number>([['a', 1]]);
     const onAdd = vi.fn();
