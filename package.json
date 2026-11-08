@@ -3,8 +3,9 @@
   "private": true,
   "packageManager": "pnpm@12.18.0",
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm build && eslint .",
+    "lint:fix": "pnpm build && eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present typecheck",

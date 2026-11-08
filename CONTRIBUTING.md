@@ -20,6 +20,9 @@ Run the relevant package's tests and build when its code or configuration change
 use `pnpm --filter <package-name> test` and `pnpm --filter <package-name> build` when those
 scripts exist. Add or update tests for behavior changes and cover relevant edge cases.
 
+The lint scripts build workspace packages first so their dependencies and types can be resolved
+on a fresh checkout.
+
 `pnpm format` formats the workspace, and `pnpm lint:fix` applies available ESLint fixes.
 Review automated changes before submitting them.
 
