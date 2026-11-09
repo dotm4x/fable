@@ -88,7 +88,6 @@ export default defineConfig(
       'import-x/no-self-import': 'error',
       'import-x/no-unresolved': 'error',
       'no-alert': 'error',
-      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-constant-binary-expression': 'error',
       'no-debugger': 'error',
       'no-else-return': 'error',
@@ -135,13 +134,6 @@ export default defineConfig(
       '**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}',
     ],
     languageOptions: { globals: globals.node },
-  },
-  {
-    files: [
-      '**/scripts/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}',
-      '**/*.{test,spec,stories}.{js,jsx,mjs,cjs,ts,tsx,mts,cts}',
-    ],
-    rules: { 'no-console': 'off' },
   },
   {
     files: ['**/*.{js,jsx,mjs,cjs}'],
@@ -216,10 +208,6 @@ export default defineConfig(
         },
       ],
     },
-  },
-  {
-    files: ['packages/fable/source/modules/logger/outputs/console.ts'],
-    rules: { 'no-console': 'off' },
   },
   eslintConfigPrettier,
 )

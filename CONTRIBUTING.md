@@ -45,7 +45,6 @@ Review automated changes before submitting them.
   dependencies. Declare dependencies in the package that uses them.
 - Document public behavior, parameters, return values, and relevant edge cases. Keep comments
   useful and avoid duplicating inherited documentation.
-- Avoid `console.log` in production code; intentional warnings and errors are allowed.
 
 [eslint.config.mjs](./eslint.config.mjs) is the authoritative source for lint rules and
 [.prettierrc.json](./.prettierrc.json) for formatting. Prettier handles formatting; do not
