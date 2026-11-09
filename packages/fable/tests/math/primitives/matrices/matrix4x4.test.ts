@@ -66,6 +66,20 @@ describe('Matrix4x4', () => {
     expect(transformed.y).toBeCloseTo(point.y)
   })
 
+  it('creates orthographic projections and promotes two-dimensional matrices', () => {
+    const projection = Matrix4x4.orthographicOffCenter(-320, 320, 180, -180, -1, 1)
+
+    expect(projection.m11).toBeCloseTo(2 / 640)
+    expect(projection.m22).toBeCloseTo(-2 / 360)
+    expect(projection.m33).toBeCloseTo(0.5)
+    expect(projection.m41).toBeCloseTo(0)
+    expect(projection.m42).toBeCloseTo(0)
+
+    const promoted = Matrix4x4.fromMatrix3x2(Matrix3x2.translation(10, 20))
+    const point = promoted.transform(new Vector4(1, 2, 0, 1))
+    expect(point).toEqual(new Vector4(11, 22, 0, 1))
+  })
+
   it('inverts invertible matrices and reports singular ones', () => {
     const transform = Matrix4x4.translation(10, 20, 30)
       .multiply(Matrix4x4.rotationZ(Math.PI / 3))

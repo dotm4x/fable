@@ -73,6 +73,7 @@ export class Asset<TValue = unknown> extends Resource implements Identifiable<st
   protected override onDestroy(): void {
     if (!this._onChange.destroyed) this._onChange.destroy()
     this._release()
+    super.onDestroy()
   }
 }
 

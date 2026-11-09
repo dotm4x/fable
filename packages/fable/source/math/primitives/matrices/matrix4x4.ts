@@ -1,5 +1,7 @@
 import { Vector4 } from '../vectors/vector4.js'
 
+import { type Matrix3x2 } from './matrix3x2.js'
+
 /**
  * An immutable affine transformation matrix for three-dimensional space.
  *
@@ -140,6 +142,73 @@ export class Matrix4x4 {
    */
   public static scaling(x: number, y: number, z: number): Matrix4x4 {
     return new Matrix4x4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1)
+  }
+
+  /**
+   * Creates an orthographic projection centered between the given extents.
+   *
+   * @param left - The minimum x coordinate of the view volume.
+   * @param right - The maximum x coordinate of the view volume.
+   * @param bottom - The minimum y coordinate of the view volume.
+   * @param top - The maximum y coordinate of the view volume.
+   * @param near - The minimum depth of the view volume.
+   * @param far - The maximum depth of the view volume.
+   * @returns The orthographic projection matrix.
+   */
+  public static orthographicOffCenter(
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+  ): Matrix4x4 {
+    return new Matrix4x4(
+      2 / (right - left),
+      0,
+      0,
+      0,
+      0,
+      2 / (top - bottom),
+      0,
+      0,
+      0,
+      0,
+      1 / (far - near),
+      0,
+      (left + right) / (left - right),
+      (top + bottom) / (bottom - top),
+      near / (near - far),
+      1,
+    )
+  }
+
+  /**
+   * Promotes a two-dimensional affine matrix by preserving its two-dimensional
+   * transformation and leaving the z axis unaffected.
+   *
+   * @param matrix - The two-dimensional matrix to promote.
+   * @returns The equivalent four-by-four matrix.
+   */
+  public static fromMatrix3x2(matrix: Matrix3x2): Matrix4x4 {
+    return new Matrix4x4(
+      matrix.m11,
+      matrix.m12,
+      0,
+      0,
+      matrix.m21,
+      matrix.m22,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      matrix.m31,
+      matrix.m32,
+      0,
+      1,
+    )
   }
 
   /**
