@@ -1,3 +1,4 @@
+import { Bounds2 } from '#/math/geometry/bounds2.js'
 import { Mesh } from '#/math/geometry/mesh.js'
 
 import { type GraphicVertex2D } from './vertex2d.js'
@@ -10,6 +11,8 @@ import { type GraphicVertex2D } from './vertex2d.js'
  * describes geometry only and never creates textures or GPU resources.
  */
 export class GraphicMesh2D extends Mesh<GraphicVertex2D> {
+  /** Local axis-aligned bounds of the mesh vertices. */
+  public readonly bounds: Bounds2
   /**
    * @param vertices - The graphical vertices to copy.
    * @param indices - The triangle indices to copy, or null to use the vertices
@@ -19,6 +22,7 @@ export class GraphicMesh2D extends Mesh<GraphicVertex2D> {
    */
   public constructor(vertices: Iterable<GraphicVertex2D>, indices?: Iterable<number> | null) {
     super(validateVertices(vertices), indices)
+    this.bounds = Bounds2.fromPoints(this.vertices.map((vertex) => vertex.position))
   }
 }
 

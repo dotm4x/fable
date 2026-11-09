@@ -18,6 +18,7 @@ describe('Image', () => {
 
   it('calculates data sizes and bytes per pixel', () => {
     expect(Image.getBytesPerPixel()).toBe(4)
+    expect(Image.getBytesPerPixel(RasterImageFormat.rgba8Srgb)).toBe(4)
     expect(Image.calculateDataSize(2, 3)).toBe(24)
     expect(Image.calculateDataSize(1, 1, RasterImageFormat.rgba8)).toBe(4)
   })
@@ -29,6 +30,13 @@ describe('Image', () => {
     expect(() => new Image(1, 1, new Uint8Array(3))).toThrow(
       'Image data contains 3 bytes, but 4 bytes were expected.',
     )
+  })
+
+  it('accepts sRGB encoded data', () => {
+    const image = new Image(1, 1, new Uint8Array(4), RasterImageFormat.rgba8Srgb)
+
+    expect(image.format).toBe(RasterImageFormat.rgba8Srgb)
+    image.destroy()
   })
 
   it('clears its data when destroyed', () => {

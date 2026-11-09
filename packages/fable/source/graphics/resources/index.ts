@@ -1,1 +1,7 @@
+export { BlendMode } from './blend-mode.js'
 export { Image, RasterImageFormat } from './image.js'
+export { GraphicMaterial, type GraphicMaterialOptions } from './material.js'
+export { Shader, ShaderLanguage, type ShaderOptions, ShaderStage } from './shader.js'
+export { ShaderSource, type ShaderSourceOptions } from './shader-source.js'
+export * from './targets/index.js'
+export * from './textures/index.js'

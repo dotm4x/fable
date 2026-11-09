@@ -4,10 +4,13 @@ import { Resource } from '#/core/primitives/resource.js'
 export enum RasterImageFormat {
   /** Four 8-bit channels in red, green, blue and alpha order. */
   rgba8 = 'rgba8',
+  /** Four 8-bit channels in red, green, blue and alpha order, sRGB encoded. */
+  rgba8Srgb = 'rgba8-srgb',
 }
 
 const bytesPerPixel: ReadonlyMap<RasterImageFormat, number> = new Map([
   [RasterImageFormat.rgba8, 4],
+  [RasterImageFormat.rgba8Srgb, 4],
 ])
 
 /**
@@ -121,5 +124,6 @@ export class Image extends Resource {
 
   protected override onDestroy(): void {
     this._data = new Uint8Array(0)
+    super.onDestroy()
   }
 }

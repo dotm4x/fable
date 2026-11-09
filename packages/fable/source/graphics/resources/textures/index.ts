@@ -1,0 +1,6 @@
+export { TextureAddressMode } from './address-mode.js'
+export { TextureBinding } from './binding.js'
+export { TextureFilter } from './filter.js'
+export { ImageTexture } from './image.js'
+export { TextureSampler, type TextureSamplerOptions } from './sampler.js'
+export { Texture } from './texture.js'
