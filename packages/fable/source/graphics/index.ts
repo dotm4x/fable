@@ -1,1 +1,1 @@
-export { Color } from './color.js'
+export * from './primitives/index.js'
