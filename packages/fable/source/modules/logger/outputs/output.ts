@@ -1,4 +1,4 @@
-import { Destroyable } from '@core/primitives/destroyable.js'
+import { Destroyable } from '#core/primitives/destroyable.js'
 
 import { type LogMessage } from '../message.js'
 

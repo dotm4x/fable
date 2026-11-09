@@ -3,7 +3,7 @@
   "compilerOptions": {
     "allowJs": true,
     "paths": {
-      "@core/*": ["./source/core/*"]
+      "#core/*": ["./source/core/*"]
     }
   },
   "include": [

@@ -1,7 +1,7 @@
-import { ReactiveSet } from '@core/collections/reactive-set.js'
-import { type Identifiable } from '@core/interfaces/identifiable.js'
-import { Destroyable } from '@core/primitives/destroyable.js'
-import { Once } from '@core/primitives/once.js'
+import { ReactiveSet } from '#core/collections/reactive-set.js'
+import { type Identifiable } from '#core/interfaces/identifiable.js'
+import { Destroyable } from '#core/primitives/destroyable.js'
+import { Once } from '#core/primitives/once.js'
 
 import { type UpdateContext } from '../context.js'
 import { type Updatable } from '../interfaces/updatable.js'

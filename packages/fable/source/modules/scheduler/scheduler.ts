@@ -1,6 +1,6 @@
-import { IdentifiableSet } from '@core/collections/identifiable-set.js'
-import { Module, ModuleState } from '@core/module.js'
-import { Once } from '@core/primitives/once.js'
+import { IdentifiableSet } from '#core/collections/identifiable-set.js'
+import { Module, ModuleState } from '#core/module.js'
+import { Once } from '#core/primitives/once.js'
 
 import { type Channel } from './channels/channel.js'
 

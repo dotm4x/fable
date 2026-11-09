@@ -11,6 +11,9 @@
       "import": "./dist/index.js"
     }
   },
+  "imports": {
+    "#core/*": "./source/core/*"
+  },
   "files": [
     "dist"
   ],

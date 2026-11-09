@@ -1,4 +1,4 @@
-import { type ReadOnlySignal, Signal } from '@core/events/signal.js'
+import { type ReadOnlySignal, Signal } from '#core/events/signal.js'
 
 import { type Node } from './node.js'
 

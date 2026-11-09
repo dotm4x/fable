@@ -1,8 +1,8 @@
-import { IdentifiableSet } from '@core/collections/identifiable-set.js'
-import { type ReadOnlySignal, Signal } from '@core/events/signal.js'
-import { type ReadOnlyStore, Store } from '@core/events/store.js'
-import { Vector2 } from '@core/math/primitives/vectors/vector2.js'
-import { Once } from '@core/primitives/once.js'
+import { IdentifiableSet } from '#core/collections/identifiable-set.js'
+import { type ReadOnlySignal, Signal } from '#core/events/signal.js'
+import { type ReadOnlyStore, Store } from '#core/events/store.js'
+import { Vector2 } from '#core/math/primitives/vectors/vector2.js'
+import { Once } from '#core/primitives/once.js'
 
 import { InputDevice } from '../device.js'
 

@@ -1,4 +1,4 @@
-import { Destroyable } from '@core/primitives/destroyable.js'
+import { Destroyable } from '#core/primitives/destroyable.js'
 
 /** A device owned by an input manager and attached to its borrowed element. */
 export abstract class InputDevice extends Destroyable {
