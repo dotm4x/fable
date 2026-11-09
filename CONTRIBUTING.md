@@ -38,7 +38,7 @@ Review automated changes before submitting them.
 - Prefix private class fields, including constructor parameter properties, with `_` followed by
   camelCase; for example, `_onAdd`. Private methods remain camelCase without the prefix.
 - Name files using their directory's context rather than repeating it: for example, use
-  `scheduler/context.ts` for `UpdateContext` and `input-manager/devices/device.ts` for `InputDevice`.
+  `time/context.ts` for `UpdateContext` and `input/devices/device.ts` for `InputDevice`.
   This convention applies to filenames, not type names.
 - Import `core` from `modules` through the package's internal `#core/` subpath, for example
   `#core/math/primitives/vectors/vector2.js`. Code inside `core` uses relative paths. The subpath
