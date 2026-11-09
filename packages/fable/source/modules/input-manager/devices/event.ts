@@ -1,5 +1,5 @@
-import { Signal } from '../../../core/events/signal.js'
-import { Store } from '../../../core/events/store.js'
+import { Signal } from '@core/events/signal.js'
+import { Store } from '@core/events/store.js'
 
 /** Configuration for a named, rebindable input action. */
 export interface InputEventOptions<TSource> {

@@ -1,4 +1,5 @@
-import { type Vector2 } from '../../../../../core/math/primitives/vectors/vector2.js'
+import { type Vector2 } from '@core/math/primitives/vectors/vector2.js'
+
 import { InputEvent } from '../../event.js'
 import { type MouseButton } from '../button.js'
 
