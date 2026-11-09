@@ -94,9 +94,10 @@ export abstract class Game extends Destroyable {
    * Starts modules in dependency order and rolls back on failure.
    *
    * Each declared dependency class must match exactly one module, including
-   * subclasses. Missing, ambiguous, and circular dependencies are rejected
-   * before injection or startup. Lifecycle transitions cannot be reentered
-   * from hooks or state notifications.
+   * subclasses. Required dependencies must be present; optional dependencies
+   * may be absent. Ambiguous and circular dependencies are rejected before
+   * injection or startup. Lifecycle transitions cannot be reentered from
+   * hooks or state notifications.
    *
    * @throws {@link Error} If the game cannot start or dependencies are invalid.
    * @throws {@link AggregateError} If startup and recovery both fail.
@@ -284,9 +285,10 @@ export abstract class Game extends Destroyable {
       }
       visiting.add(module.identifier)
       const resolved = new Map<ModuleType, Module>()
-      for (const type of module.dependencies) {
+      for (const { type, optional } of module.dependencies) {
         const matches = [...this._modules.values()].filter((candidate) => candidate instanceof type)
         if (matches.length === 0) {
+          if (optional) continue
           throw new Error(
             `Module '${module.identifier}' requires missing dependency '${type.name}'.`,
           )

@@ -13,12 +13,25 @@ export enum ModuleState {
 /** A module class used to declare and retrieve dependencies. */
 export type ModuleType<TModule extends Module = Module> = abstract new (...args: never[]) => TModule
 
-/** Configuration for a game module. */
+/** A required or optional module dependency. */
+export interface ModuleDependency {
+  /** Class matched against registered modules, including subclasses. */
+  readonly type: ModuleType
+  /** Whether the dependency may be absent. Defaults to false. */
+  readonly optional?: boolean
+}
+
+/**
+ * Configuration for a game module.
+ *
+ * Declare dependencies as `{ type: SomeModule }`, or add `optional: true`
+ * when the module may be absent.
+ */
 export interface ModuleOptions {
   /** Unique module identifier. */
   readonly identifier: string
-  /** Classes of required modules. */
-  readonly dependencies?: Iterable<ModuleType>
+  /** Required and optional module dependencies. */
+  readonly dependencies?: Iterable<ModuleDependency>
 }
 
 interface ModuleLifecycle {
@@ -45,9 +58,10 @@ export function moduleLifecycle(module: Module): ModuleLifecycle {
 /**
  * A game-owned module with declared, borrowed dependencies.
  *
- * Dependencies are declared as classes and injected before startup. Each class
- * must match exactly one registered module, including subclasses. A module
- * must not destroy its dependencies. The owning game controls the lifecycle.
+ * Dependencies are injected before startup. Each declared class must match at
+ * most one registered module, including subclasses; required classes must match
+ * exactly one. A module must not destroy its dependencies. The owning game
+ * controls the lifecycle.
  */
 export abstract class Module extends Destroyable implements Identifiable<string> {
   private readonly _state: Store<ModuleState> = new Store<ModuleState>(ModuleState.idle)
@@ -56,8 +70,8 @@ export abstract class Module extends Destroyable implements Identifiable<string>
   /** Unique identifier of the module. */
   public readonly identifier: string
 
-  /** Classes of modules required by this module. */
-  public readonly dependencies: readonly ModuleType[]
+  /** Declared dependencies. */
+  public readonly dependencies: readonly ModuleDependency[]
 
   /** Observable, read-only module state. */
   public readonly state: ReadOnlyStore<ModuleState> = this._state
@@ -68,7 +82,11 @@ export abstract class Module extends Destroyable implements Identifiable<string>
   public constructor({ identifier, dependencies = [] }: ModuleOptions) {
     super()
     this.identifier = identifier
-    this.dependencies = Object.freeze([...dependencies])
+    const declarations = [...dependencies].map((dependency) => Object.freeze({ ...dependency }))
+    if (new Set(declarations.map((dependency) => dependency.type)).size !== declarations.length) {
+      throw new Error(`Module '${identifier}' declares a dependency more than once.`)
+    }
+    this.dependencies = Object.freeze(declarations)
     lifecycles.set(this, {
       inject: (modules) => {
         this.inject(modules)
@@ -101,6 +119,29 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     return dependency
   }
 
+  /**
+   * Gets a declared optional dependency, or undefined if it is not registered.
+   *
+   * @throws {@link Error} If injection has not occurred or the dependency is not declared optional.
+   */
+  protected optional<TModule extends Module>(type: ModuleType<TModule>): TModule | undefined {
+    this.throwIfDestroyed()
+    if (this._dependencies === undefined) {
+      throw new Error(`Module '${this.identifier}' has not been injected.`)
+    }
+    if (!this.dependencies.some((dependency) => dependency.type === type && dependency.optional)) {
+      throw new Error(
+        `Module '${this.identifier}' has not declared optional dependency '${type.name}'.`,
+      )
+    }
+    const dependency = this._dependencies.get(type)
+    if (dependency === undefined) return undefined
+    if (!(dependency instanceof type)) {
+      throw new Error(`Module '${this.identifier}' has invalid dependency '${type.name}'.`)
+    }
+    return dependency
+  }
+
   /** Called on startup. If it throws, `onStop` is called for cleanup. */
   protected onStart(): void {
     // Override when startup is required.
@@ -126,8 +167,9 @@ export abstract class Module extends Destroyable implements Identifiable<string>
       throw new Error(`Module '${this.identifier}' has already been injected.`)
     }
     const dependencies = new Map<ModuleType, Module>()
-    for (const type of this.dependencies) {
+    for (const { type, optional } of this.dependencies) {
       const dependency = modules.get(type)
+      if (dependency === undefined && optional) continue
       if (!(dependency instanceof type)) {
         throw new Error(`Module '${this.identifier}' requires missing dependency '${type.name}'.`)
       }

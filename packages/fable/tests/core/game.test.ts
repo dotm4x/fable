@@ -105,7 +105,7 @@ describe('Game', () => {
     const dependency = new DependencyModule({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     dependency.startHook = () => calls.push('dependency start')
     consumer.startHook = () => {
@@ -146,7 +146,7 @@ describe('Game', () => {
         new TestGame([new TestModule({ identifier: 'a' }), new TestModule({ identifier: 'a' })]),
     ).toThrow('Duplicate')
     const missing = new TestGame([
-      new ConsumerModule({ identifier: 'a', dependencies: [MissingModule] }),
+      new ConsumerModule({ identifier: 'a', dependencies: [{ type: MissingModule }] }),
     ])
     expect(() => {
       missing.start()
@@ -155,8 +155,8 @@ describe('Game', () => {
       missing.start()
     }).toThrow('missing dependency')
     const cyclic = new TestGame([
-      new ConsumerModule({ identifier: 'a', dependencies: [DependencyModule] }),
-      new DependencyModule({ identifier: 'b', dependencies: [ConsumerModule] }),
+      new ConsumerModule({ identifier: 'a', dependencies: [{ type: DependencyModule }] }),
+      new DependencyModule({ identifier: 'b', dependencies: [{ type: ConsumerModule }] }),
     ])
     expect(() => {
       cyclic.start()
@@ -168,7 +168,7 @@ describe('Game', () => {
     const dependency = new DerivedDependency({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     const game = new TestGame([consumer, dependency])
     game.start()
@@ -179,7 +179,7 @@ describe('Game', () => {
     const second = new DerivedDependency({ identifier: 'second' })
     const ambiguousConsumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     const ambiguous = new TestGame([ambiguousConsumer, first, second])
     expect(() => {
@@ -192,7 +192,7 @@ describe('Game', () => {
 
   it('rejects a dependency resolved to the module itself', () => {
     const game = new TestGame([
-      new ConsumerModule({ identifier: 'self', dependencies: [ConsumerModule] }),
+      new ConsumerModule({ identifier: 'self', dependencies: [{ type: ConsumerModule }] }),
     ])
     expect(() => {
       game.start()
@@ -203,7 +203,7 @@ describe('Game', () => {
     const dependency = new DependencyModule({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     const cleanup = vi.fn()
     const rollback = vi.fn()
@@ -262,7 +262,7 @@ describe('Game', () => {
     const dependency = new DependencyModule({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     consumer.stopHook = vi.fn().mockImplementationOnce(() => {
       throw new Error('stop failed')
@@ -311,7 +311,7 @@ describe('Game', () => {
     const dependency = new DependencyModule({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     consumer.startHook = () => {
       throw new Error('startup failed')
@@ -341,7 +341,7 @@ describe('Game', () => {
     const dependency = new DependencyModule({ identifier: 'dependency' })
     const consumer = new ConsumerModule({
       identifier: 'consumer',
-      dependencies: [DependencyModule],
+      dependencies: [{ type: DependencyModule }],
     })
     const consumerDestroy = vi.fn()
     const dependencyDestroy = vi.fn().mockImplementationOnce(() => {
