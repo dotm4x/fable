@@ -8,6 +8,7 @@ import { Draw2DCommand } from '#/graphics/commands/draw2d.js'
 import { type Camera } from '#/graphics/interfaces/camera.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Drawable } from '#/graphics/interfaces/drawable.js'
+import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 import { Vector4 } from '#/math/primitives/vectors/vector4.js'
@@ -122,7 +123,17 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     const visible = this.cull
       ? commands.filter((command) => this.isVisible(command, context))
       : commands
-    visible.sort((left, right) => orderOf(left) - orderOf(right))
+    const materials = new Map<GraphicMaterial, number>()
+    for (const command of visible) {
+      if (command instanceof Draw2DCommand && !materials.has(command.material)) {
+        materials.set(command.material, materials.size)
+      }
+    }
+    visible.sort(
+      (left, right) =>
+        orderOf(left) - orderOf(right) ||
+        materialOf(left, materials) - materialOf(right, materials),
+    )
 
     return visible
   }
@@ -166,4 +177,8 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
 
 function orderOf(command: DrawCommand): number {
   return command instanceof Draw2DCommand ? command.order : 0
+}
+
+function materialOf(command: DrawCommand, materials: ReadonlyMap<GraphicMaterial, number>): number {
+  return command instanceof Draw2DCommand ? (materials.get(command.material) ?? 0) : -1
 }

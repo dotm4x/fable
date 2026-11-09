@@ -20,7 +20,7 @@ import type { TextureSampler } from '#/graphics/resources/textures/sampler.js'
 import { Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
-import { RenderBackend } from '../backend.js'
+import { RenderBackend, type RenderStats } from '../backend.js'
 
 import { createDraw2DMaterial } from './shaders/draw2d.js'
 
@@ -83,6 +83,8 @@ export class WebGlBackend extends RenderBackend {
   private readonly _onContextRestored: () => void
   private _whiteTexture: WebGLTexture | undefined
   private _contextLost: boolean = false
+  private _drawCalls: number = 0
+  private _batchCount: number = 0
   private _batchVertexArray: WebGLVertexArrayObject | undefined
   private _batchVertexBuffer: WebGLBuffer | undefined
   private _batchIndexBuffer: WebGLBuffer | undefined
@@ -132,6 +134,11 @@ export class WebGlBackend extends RenderBackend {
   }
 
   /** @inheritDoc */
+  public get stats(): RenderStats {
+    return { drawCalls: this._drawCalls, batches: this._batchCount }
+  }
+
+  /** @inheritDoc */
   public get viewport(): Viewport {
     return new Viewport(new Vector2(0, 0), new Vector2(this._canvas.width, this._canvas.height))
   }
@@ -141,6 +148,8 @@ export class WebGlBackend extends RenderBackend {
       throw new Error('The WebGL context was lost.')
     }
     this.syncCanvasSize()
+    this._drawCalls = 0
+    this._batchCount = 0
   }
 
   protected override onEndFrame(): void {
@@ -239,6 +248,8 @@ export class WebGlBackend extends RenderBackend {
     )
     gl.bindVertexArray(mesh.vertexArray)
     gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_INT, 0)
+    this._drawCalls++
+    this._batchCount++
   }
 
   private drawBatch(batch: readonly Draw2DCommand[], context: DrawContext): void {
@@ -307,6 +318,8 @@ export class WebGlBackend extends RenderBackend {
     )
     gl.bindVertexArray(this._batchVertexArray ?? null)
     gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0)
+    this._drawCalls++
+    this._batchCount++
   }
 
   private applyMaterial(

@@ -129,6 +129,7 @@ describe('WebGlBackend', () => {
 
     expect(harness.drawCalls).toHaveLength(1)
     expect(harness.drawCalls[0]?.args[1]).toBe(9)
+    expect(backend.stats).toEqual({ drawCalls: 1, batches: 1 })
     expect(
       harness.gl.callsTo('bufferData').some((call) => call.args[2] === harness.gl.DYNAMIC_DRAW),
     ).toBe(true)

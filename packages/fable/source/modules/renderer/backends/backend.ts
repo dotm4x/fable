@@ -8,6 +8,14 @@ import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 
+/** Draw call counters for the last completed frame. */
+export interface RenderStats {
+  /** Number of draw calls issued. */
+  readonly drawCalls: number
+  /** Number of batches or passes issued. */
+  readonly batches: number
+}
+
 /**
  * Executes backend-independent drawing commands within explicit frames.
  *
@@ -50,6 +58,9 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
    * @returns A material compatible with this backend.
    */
   public abstract createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial
+
+  /** Draw call counters for the last completed frame. */
+  public abstract get stats(): RenderStats
 
   /** Size of the drawing surface in physical pixels. */
   public abstract get viewport(): Viewport

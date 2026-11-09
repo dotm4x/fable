@@ -20,7 +20,7 @@ import type { TextureSampler } from '#/graphics/resources/textures/sampler.js'
 import { Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
-import { RenderBackend } from '../backend.js'
+import { RenderBackend, type RenderStats } from '../backend.js'
 
 import { createDraw2DMaterial } from './shaders/draw2d.js'
 import { createShaderModule } from './shader.js'
@@ -123,6 +123,8 @@ export class WebGpuBackend extends RenderBackend {
   private _encoder: GPUCommandEncoder | undefined
   private _canvasView: GPUTextureView | undefined
   private _lost: boolean = false
+  private _drawCalls: number = 0
+  private _batchCount: number = 0
   private readonly _sampleCount: number
   private _msaaTexture: GPUTexture | undefined
   private _msaaView: GPUTextureView | undefined
@@ -246,6 +248,11 @@ export class WebGpuBackend extends RenderBackend {
   }
 
   /** @inheritDoc */
+  public get stats(): RenderStats {
+    return { drawCalls: this._drawCalls, batches: this._batchCount }
+  }
+
+  /** @inheritDoc */
   public get viewport(): Viewport {
     return new Viewport(new Vector2(0, 0), new Vector2(this._canvas.width, this._canvas.height))
   }
@@ -255,6 +262,8 @@ export class WebGpuBackend extends RenderBackend {
       throw new Error('The WebGPU device was lost.')
     }
     this.syncCanvasSize()
+    this._drawCalls = 0
+    this._batchCount = 0
     this._batches = []
     this._draws = []
     this._encoder = this._device.createCommandEncoder()
@@ -319,8 +328,12 @@ export class WebGpuBackend extends RenderBackend {
               storeOp: 'store',
             }
       const pass = encoder.beginRenderPass({ colorAttachments: [attachment] })
+      this._batchCount++
       try {
-        for (const draw of batch.draws) this.encodeDraw(pass, draw)
+        for (const draw of batch.draws) {
+          this.encodeDraw(pass, draw)
+          this._drawCalls++
+        }
       } finally {
         pass.end()
       }

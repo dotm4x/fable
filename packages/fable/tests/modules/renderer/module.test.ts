@@ -29,6 +29,9 @@ class TestGame extends Game {}
 
 class TestBackend extends RenderBackend {
   public readonly defaultMaterial: GraphicMaterial = createMaterial()
+  public get stats(): { drawCalls: number; batches: number } {
+    return { drawCalls: 0, batches: 0 }
+  }
   public readonly events: string[] = []
   public readonly rendered: DrawCommand[][] = []
   public readonly contexts: (DrawContext | undefined)[] = []

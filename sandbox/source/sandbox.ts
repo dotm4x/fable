@@ -45,5 +45,7 @@ export class Sandbox extends Game implements Updatable {
     if (updates !== null) updates.textContent = String(this.frames)
     const delta = document.querySelector('#delta')
     if (delta !== null) delta.textContent = context.deltaTime.toFixed(3)
+    const draws = document.querySelector('#draws')
+    if (draws !== null) draws.textContent = String(this.renderer.backend.stats.drawCalls)
   }
 }

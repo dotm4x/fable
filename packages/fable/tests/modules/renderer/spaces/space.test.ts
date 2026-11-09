@@ -121,6 +121,52 @@ describe('RenderSpace', () => {
     space.destroy()
   })
 
+  it('groups commands that share a material while preserving order', () => {
+    const first = createMaterial()
+    const second = createMaterial()
+    const mesh = new GraphicMesh2D([
+      new GraphicVertex2D(new Vector2(0, 0), new Vector2(0, 0), Color.white),
+      new GraphicVertex2D(new Vector2(1, 0), new Vector2(1, 0), Color.white),
+      new GraphicVertex2D(new Vector2(0, 1), new Vector2(0, 1), Color.white),
+    ])
+    const firstCommand = new Draw2DCommand({
+      mesh,
+      material: first,
+      transform: Matrix3x2.identity,
+    })
+    const secondCommand = new Draw2DCommand({
+      mesh,
+      material: second,
+      transform: Matrix3x2.identity,
+    })
+    const thirdCommand = new Draw2DCommand({
+      mesh,
+      material: first,
+      transform: Matrix3x2.identity,
+    })
+    const space = new RenderSpace({
+      identifier: 'space',
+      camera: new Camera2D(),
+      entries: [
+        new CommandDrawable([firstCommand]),
+        new CommandDrawable([secondCommand]),
+        new CommandDrawable([thirdCommand]),
+      ],
+    })
+    const context = new RenderContext(
+      0,
+      new Camera2D(),
+      new Viewport(new Vector2(0, 0), new Vector2(640, 360)),
+    )
+
+    const collected = space.collect(context) as Draw2DCommand[]
+
+    expect(collected[0]?.material).toBe(first)
+    expect(collected[1]?.material).toBe(first)
+    expect(collected[2]?.material).toBe(second)
+    space.destroy()
+  })
+
   it('keeps culled commands when culling is disabled', () => {
     const outside = new CommandDrawable([commandAt(5000, 5000)])
     const space = new RenderSpace({
