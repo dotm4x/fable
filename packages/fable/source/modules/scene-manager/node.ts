@@ -4,6 +4,12 @@ import { type Module, type ModuleType } from '../../core/module.js'
 import { Destroyable } from '../../core/primitives/destroyable.js'
 import { Once } from '../../core/primitives/once.js'
 
+import {
+  createNodeReactiveSet,
+  type NodeReactiveSet,
+  nodeSetLifecycle,
+} from './node-reactive-set.js'
+
 /** Configuration for a node and its initially owned children. */
 export interface NodeOptions {
   /** Initial display name. Defaults to `Node`. */
@@ -54,6 +60,7 @@ export class Node extends Destroyable {
   private _context: NodeContext | undefined
   private _loaded: boolean = false
   private _transitioning: boolean = false
+  private _destroying: boolean = false
   private _rollback: { preserved: ReadonlySet<Node>; initialized: boolean } | undefined
 
   /** Stable identifier. */
@@ -66,6 +73,8 @@ export class Node extends Destroyable {
   public readonly tags: ReactiveSet<string>
   /** Whether parent unloading leaves this node loaded. */
   public readonly persistent: boolean
+  /** Reactive collection of direct children owned by this node. */
+  public readonly children: NodeReactiveSet
 
   public constructor({
     name = 'Node',
@@ -79,6 +88,7 @@ export class Node extends Destroyable {
     this.visible = new Store(visible)
     this.persistent = persistent
     this.tags = new ReactiveSet(tags)
+    this.children = createNodeReactiveSet(this, this._children)
     ownerships.set(this, {
       claim: (owner, context) => {
         this.claim(owner, context)
@@ -124,10 +134,6 @@ export class Node extends Destroyable {
   public get parent(): Node | undefined {
     return this._parent
   }
-  /** Direct children in insertion order. */
-  public get children(): ReadonlySet<Node> {
-    return new Set(this._children)
-  }
   /** Whether this node is loaded. */
   public get loaded(): boolean {
     return this._loaded
@@ -146,6 +152,7 @@ export class Node extends Destroyable {
   /** Adds an unowned child. Loaded parents load the child immediately. */
   public add(child: Node): void {
     this.throwIfDestroyed()
+    if (this._destroying) throw new Error('Cannot modify children while destroying the node.')
     this.validateChild(child)
     this._children.add(child)
     child._parent = this
@@ -157,19 +164,34 @@ export class Node extends Destroyable {
         this._children.delete(child)
         child._parent = undefined
         child.clearContext()
+      } else {
+        try {
+          nodeSetLifecycle(this.children).added(child)
+        } catch (failure) {
+          throw new AggregateError(
+            [error, failure],
+            'Attaching a child and notifying listeners failed.',
+            {
+              cause: failure,
+            },
+          )
+        }
       }
       throw error
     }
+    nodeSetLifecycle(this.children).added(child)
   }
 
   /** Detaches a child without destroying it; non-persistent loaded children unload. */
   public remove(child: Node): boolean {
     this.throwIfDestroyed()
+    if (this._destroying) throw new Error('Cannot modify children while destroying the node.')
     if (!this._children.has(child)) return false
     if (child.loaded && !child.persistent) child.unload()
     this._children.delete(child)
     child._parent = undefined
     child.clearContext()
+    nodeSetLifecycle(this.children).deleted(child)
     return true
   }
 
@@ -252,6 +274,7 @@ export class Node extends Destroyable {
     if (
       this._loaded ||
       this._transitioning ||
+      this._destroying ||
       (this._parent !== undefined && !this._parent.loaded)
     ) {
       throw new Error('Node cannot be loaded in its current state.')
@@ -384,19 +407,26 @@ export class Node extends Destroyable {
       throw new Error('Detach the node from its owner before destroying it.')
     }
     if (this.loaded) this.unload()
-    for (const child of [...this._children].reverse()) {
-      if (child.loaded) child.unload()
-      child._parent = undefined
-      try {
-        child.destroy()
-      } catch (error) {
-        child._parent = this
-        throw error
+    this._destroying = true
+    try {
+      for (const child of [...this._children].reverse()) {
+        if (child.loaded) child.unload()
+        child._parent = undefined
+        try {
+          child.destroy()
+        } catch (error) {
+          child._parent = this
+          throw error
+        }
+        this._children.delete(child)
+        nodeSetLifecycle(this.children).deleted(child)
       }
-      this._children.delete(child)
+      nodeSetLifecycle(this.children).destroy()
+      if (!this.name.destroyed) this.name.destroy()
+      if (!this.visible.destroyed) this.visible.destroy()
+      this.tags.clear()
+    } finally {
+      this._destroying = false
     }
-    if (!this.name.destroyed) this.name.destroy()
-    if (!this.visible.destroyed) this.visible.destroy()
-    this.tags.clear()
   }
 }

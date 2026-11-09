@@ -33,7 +33,7 @@ export class NodeChannel extends Channel {
     if (!this.alive(node)) return
     if (node.loaded && this.updatable(node)) node.update(context)
     if (!this.alive(node)) return
-    for (const child of node.children) {
+    for (const child of [...node.children]) {
       this.visit(child, context)
     }
   }
