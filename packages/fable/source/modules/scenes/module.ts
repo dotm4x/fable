@@ -1,7 +1,7 @@
-import { type ReadOnlyStore, Store } from '#core/events/store.js'
-import { Module, type ModuleDependency, ModuleState, type ModuleType } from '#core/module.js'
-import { type Node, type NodeContext, nodeOwnership } from '#core/node/node.js'
-import { Once } from '#core/primitives/once.js'
+import { type ReadOnlyStore, Store } from '#/core/events/store.js'
+import { Module, type ModuleDependency, ModuleState, type ModuleType } from '#/core/module.js'
+import { type Node, type NodeContext, nodeOwnership } from '#/core/node/node.js'
+import { Once } from '#/core/primitives/once.js'
 
 import { LoggerModule } from '../logger/module.js'
 

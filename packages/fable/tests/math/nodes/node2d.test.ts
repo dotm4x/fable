@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { Node, Node2D, Vector2 } from '../../../../source/index.js'
+import { Node, Node2D, Vector2 } from '../../../source/index.js'
 
 describe('Node2D', () => {
   it('inherits node behavior and defaults its transformation values', () => {

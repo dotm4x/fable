@@ -1,4 +1,4 @@
-import { type Vector2 } from '#core/math/primitives/vectors/vector2.js'
+import { type Vector2 } from '#/math/primitives/vectors/vector2.js'
 
 /** Browser wheel delta; `deltaMode` identifies its units (pixels, lines, or pages). */
 export interface MouseWheelEventPayload {

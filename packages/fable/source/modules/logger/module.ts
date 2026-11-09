@@ -1,7 +1,7 @@
-import { ReactiveSet } from '#core/collections/reactive-set.js'
-import { type ReadOnlySignal, Signal } from '#core/events/signal.js'
-import { Module, ModuleState } from '#core/module.js'
-import { Once } from '#core/primitives/once.js'
+import { ReactiveSet } from '#/core/collections/reactive-set.js'
+import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
+import { Module, ModuleState } from '#/core/module.js'
+import { Once } from '#/core/primitives/once.js'
 
 import { type LogOutput } from './outputs/output.js'
 import { type LogMessage, LogMessageKind, type LogOptions } from './message.js'

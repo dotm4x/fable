@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { Matrix3x2, Vector2 } from '../../../../../source/index.js'
+import { Matrix3x2, Vector2 } from '../../../../source/index.js'
 
 describe('Matrix3x2', () => {
   it('creates identity, translation, scale and rotation transformations', () => {

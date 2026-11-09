@@ -1,4 +1,4 @@
-import { type Node } from '#core/node/node.js'
+import { type Node } from '#/core/node/node.js'
 
 import { type ScenesModule } from '../../scenes/module.js'
 import { type UpdateContext } from '../context.js'

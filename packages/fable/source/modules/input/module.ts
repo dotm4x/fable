@@ -1,5 +1,5 @@
-import { Module, ModuleState } from '#core/module.js'
-import { Once } from '#core/primitives/once.js'
+import { Module, ModuleState } from '#/core/module.js'
+import { Once } from '#/core/primitives/once.js'
 
 import { type InputDevice } from './devices/device.js'
 

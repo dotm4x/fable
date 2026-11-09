@@ -40,11 +40,12 @@ Review automated changes before submitting them.
 - Name files using their directory's context rather than repeating it: for example, use
   `time/context.ts` for `UpdateContext` and `input/devices/device.ts` for `InputDevice`.
   This convention applies to filenames, not type names.
-- Import `core` from `modules` through the package's internal `#core/` subpath, for example
-  `#core/math/primitives/vectors/vector2.js`. Code inside `core` uses relative paths. The subpath
-  is declared in the package's `imports` field, so Node, Vite, Vitest, and TypeScript resolve it
-  without consumer configuration. The package build rewrites it with `tsc-alias`, keeping published
-  output on plain relative imports.
+- Import other source domains through the package's internal `#/` subpath, which points at
+  `source`, for example `#/core/node/node.js` and `#/math/primitives/vectors/vector2.js`. Code
+  inside a domain, such as `core` or `math`, uses relative paths. The subpath is declared in the
+  package's `imports` field, so Node, Vite, Vitest, and TypeScript resolve it without consumer
+  configuration. The package build rewrites it with `tsc-alias`, keeping published output on plain
+  relative imports.
 - Preserve type safety: avoid `any`, unsafe assertions, non-null assertions, and unhandled
   promises. Handle errors explicitly and throw `Error` objects.
 - Keep APIs predictable and changes focused. Prefer simple functions or composition over

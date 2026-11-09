@@ -1,5 +1,6 @@
-import { Store } from '../../events/store.js'
-import { Node, type NodeOptions } from '../../node/node.js'
+import { Store } from '#/core/events/store.js'
+import { Node, type NodeOptions } from '#/core/node/node.js'
+
 import { Matrix3x2 } from '../primitives/matrices/matrix3x2.js'
 import { Vector2 } from '../primitives/vectors/vector2.js'
 

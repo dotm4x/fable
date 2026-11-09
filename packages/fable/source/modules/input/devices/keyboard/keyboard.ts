@@ -1,5 +1,5 @@
-import { IdentifiableSet } from '#core/collections/identifiable-set.js'
-import { Once } from '#core/primitives/once.js'
+import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
+import { Once } from '#/core/primitives/once.js'
 
 import { InputDevice } from '../device.js'
 
