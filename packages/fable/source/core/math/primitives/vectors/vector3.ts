@@ -3,8 +3,7 @@ import { BaseVector } from './vector.js'
 /**
  * An immutable three-dimensional vector with `x`, `y`, and `z` components.
  *
- * Arithmetic methods are inherited from {@link BaseVector} and return new
- * `Vector3` instances.
+ * Arithmetic methods return new `Vector3` instances.
  */
 export class Vector3 extends BaseVector<Vector3> {
   /** The horizontal component. */
