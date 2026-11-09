@@ -1,8 +1,8 @@
-import { ReactiveSet } from '#core/collections/reactive-set.js'
-import { Store } from '#core/events/store.js'
-import { type Module, type ModuleType } from '#core/module.js'
-import { Destroyable } from '#core/primitives/destroyable.js'
-import { Once } from '#core/primitives/once.js'
+import { ReactiveSet } from '../collections/reactive-set.js'
+import { Store } from '../events/store.js'
+import { type Module, type ModuleType } from '../module.js'
+import { Destroyable } from '../primitives/destroyable.js'
+import { Once } from '../primitives/once.js'
 
 import {
   createNodeReactiveSet,
@@ -47,7 +47,8 @@ export function nodeOwnership(node: Node): NodeOwnership {
 }
 
 /**
- * A node in a scene hierarchy. Parents own children; detaching returns ownership.
+ * A node in a hierarchy and the basic unit of the engine. Parents own children;
+ * detaching returns ownership.
  * Names are mutable and identifiers remain stable for the lifetime of a node.
  */
 export class Node extends Destroyable {
@@ -97,7 +98,7 @@ export class Node extends Destroyable {
         this.release(owner)
       },
       destroy: (owner) => {
-        if (this._owner !== owner) throw new Error('Scene is not owned by this manager.')
+        if (this._owner !== owner) throw new Error('Node is not owned by this owner.')
         this._owner = undefined
         try {
           this.destroy()
@@ -252,19 +253,17 @@ export class Node extends Destroyable {
     // Override to clean up the node.
   }
 
-  /** Resolves a dependency declared by the owning scene manager. */
+  /** Resolves a dependency declared by the node's owner. */
   protected require<TModule extends Module>(type: ModuleType<TModule>): TModule {
     this.throwIfDestroyed()
-    if (this._context === undefined)
-      throw new Error('Node has no scene manager dependency context.')
+    if (this._context === undefined) throw new Error('Node has no dependency context.')
     return this._context.require(type)
   }
 
   /** Gets a declared optional dependency, or undefined if it is absent. */
   protected optional<TModule extends Module>(type: ModuleType<TModule>): TModule | undefined {
     this.throwIfDestroyed()
-    if (this._context === undefined)
-      throw new Error('Node has no scene manager dependency context.')
+    if (this._context === undefined) throw new Error('Node has no dependency context.')
     return this._context.optional(type)
   }
 
@@ -390,14 +389,14 @@ export class Node extends Destroyable {
   private claim(owner: object, context: NodeContext): void {
     this.throwIfDestroyed()
     if (this._parent !== undefined || this._owner !== undefined || this.loaded) {
-      throw new Error('Scene must be unowned, unloaded, and without a parent.')
+      throw new Error('Node must be unowned, unloaded, and without a parent.')
     }
     this._owner = owner
     this.setContext(context)
   }
 
   private release(owner: object): void {
-    if (this._owner !== owner) throw new Error('Scene is not owned by this manager.')
+    if (this._owner !== owner) throw new Error('Node is not owned by this owner.')
     this._owner = undefined
     this.clearContext()
   }

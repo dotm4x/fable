@@ -1,5 +1,6 @@
-import { type SceneManager } from '../../scene-manager/manager.js'
-import { type Node } from '../../scene-manager/node.js'
+import { type Node } from '#core/node/node.js'
+
+import { type SceneManager } from '../../scene-manager/module.js'
 import { type UpdateContext } from '../context.js'
 import { type Updatable } from '../interfaces/updatable.js'
 

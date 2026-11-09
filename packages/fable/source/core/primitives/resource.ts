@@ -1,4 +1,4 @@
-import { Destroyable } from './primitives/destroyable.js'
+import { Destroyable } from './destroyable.js'
 
 /**
  * Represents reusable data that can be shared between objects.

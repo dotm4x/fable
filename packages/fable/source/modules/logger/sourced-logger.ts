@@ -1,5 +1,5 @@
-import { type Logger } from './logger.js'
 import { type SourcedLogOptions } from './message.js'
+import { type Logger } from './module.js'
 
 /** Logger bound to a source; it borrows the underlying logger. */
 export class SourcedLogger {

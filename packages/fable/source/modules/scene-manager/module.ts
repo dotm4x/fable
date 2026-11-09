@@ -1,10 +1,9 @@
 import { type ReadOnlyStore, Store } from '#core/events/store.js'
 import { Module, type ModuleDependency, ModuleState, type ModuleType } from '#core/module.js'
+import { type Node, type NodeContext, nodeOwnership } from '#core/node/node.js'
 import { Once } from '#core/primitives/once.js'
 
-import { Logger } from '../logger/logger.js'
-
-import { type Node, type NodeContext, nodeOwnership } from './node.js'
+import { Logger } from '../logger/module.js'
 
 /** Configuration for a scene manager. */
 export interface SceneManagerOptions {
