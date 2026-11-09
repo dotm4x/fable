@@ -1,9 +1,7 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": false,
-    "rootDir": "source",
-    "outDir": "dist"
+    "types": ["vite/client"]
   },
   "include": ["source/**/*.ts"],
   "exclude": ["**/node_modules", "**/dist", "**/build", "**/coverage"]

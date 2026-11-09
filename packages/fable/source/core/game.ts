@@ -1,6 +1,7 @@
 import { type ReadOnlyStore, Store } from './events/store.js'
-import { type Module, moduleLifecycle, ModuleState, type ModuleType } from './modules/module.js'
 import { Destroyable } from './primitives/destroyable.js'
+import { Once } from './primitives/once.js'
+import { type Module, moduleLifecycle, ModuleState, type ModuleType } from './module.js'
 
 /** Lifecycle states of a game. */
 export enum GameState {
@@ -22,7 +23,9 @@ export abstract class Game extends Destroyable {
   private readonly _modules: Map<string, Module> = new Map<string, Module>()
   private readonly _state: Store<GameState> = new Store<GameState>(GameState.idle)
   private _order: readonly Module[] | undefined
-  private _preparation: 'pending' | 'preparing' | 'ready' | 'failed' = 'pending'
+  private readonly _preparation: Once = new Once(
+    'Game preparation has already failed or is in progress.',
+  )
   private _injection: 'pending' | 'ready' | 'failed' = 'pending'
   private _destroying: boolean = false
   private _transitioning: boolean = false
@@ -213,14 +216,7 @@ export abstract class Game extends Destroyable {
   }
 
   private prepare(): void {
-    if (this._preparation === 'ready') {
-      return
-    }
-    if (this._preparation !== 'pending') {
-      throw new Error('Game preparation has already failed or is in progress.')
-    }
-    this._preparation = 'preparing'
-    try {
+    this._preparation.execute(() => {
       for (const module of this.compose()) {
         const existing = this._modules.get(module.identifier)
         if (existing !== undefined) {
@@ -239,11 +235,7 @@ export abstract class Game extends Destroyable {
         this._modules.set(module.identifier, module)
       }
       this.configure()
-      this._preparation = 'ready'
-    } catch (error) {
-      this._preparation = 'failed'
-      throw error
-    }
+    })
   }
 
   private inject(

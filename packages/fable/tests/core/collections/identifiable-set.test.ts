@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { type Identifiable, IdentifiableSet, type ReadOnlySignal } from '../../source/index.js'
+import { type Identifiable, IdentifiableSet, type ReadOnlySignal } from '../../../source/index.js'
 
 interface Item extends Identifiable<string> {
   readonly name: string

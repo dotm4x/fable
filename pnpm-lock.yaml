@@ -223,6 +223,10 @@ importers:
       '@dotm4x/fable':
         specifier: workspace:*
         version: link:../packages/fable
+    devDependencies:
+      vite:
+        specifier: ^8.3.6
+        version: 8.3.6(jiti@2.7.0)(yaml@2.9.1)
 
 packages:
 

@@ -1,6 +1,6 @@
-import { type ReadOnlyStore, Store } from '../events/store.js'
-import { type Identifiable } from '../interfaces/identifiable.js'
-import { Destroyable } from '../primitives/destroyable.js'
+import { type ReadOnlyStore, Store } from './events/store.js'
+import { type Identifiable } from './interfaces/identifiable.js'
+import { Destroyable } from './primitives/destroyable.js'
 
 /** Lifecycle states of a module. */
 export enum ModuleState {
@@ -12,6 +12,14 @@ export enum ModuleState {
 
 /** A module class used to declare and retrieve dependencies. */
 export type ModuleType<TModule extends Module = Module> = abstract new (...args: never[]) => TModule
+
+/** Configuration for a game module. */
+export interface ModuleOptions {
+  /** Unique module identifier. */
+  readonly identifier: string
+  /** Classes of required modules. */
+  readonly dependencies?: Iterable<ModuleType>
+}
 
 interface ModuleLifecycle {
   inject(dependencies: ReadonlyMap<ModuleType, Module>): void
@@ -55,10 +63,9 @@ export abstract class Module extends Destroyable implements Identifiable<string>
   public readonly state: ReadOnlyStore<ModuleState> = this._state
 
   /**
-   * @param identifier - Unique module identifier.
-   * @param dependencies - Classes of required modules.
+   * @param options - Module identifier and dependencies.
    */
-  public constructor(identifier: string, dependencies: Iterable<ModuleType> = []) {
+  public constructor({ identifier, dependencies = [] }: ModuleOptions) {
     super()
     this.identifier = identifier
     this.dependencies = Object.freeze([...dependencies])

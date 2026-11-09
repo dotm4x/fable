@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { type ReadOnlyStore, Store, type StoreChange } from '../../source/index.js'
+import { type ReadOnlyStore, Store, type StoreChange } from '../../../source/index.js'
 
 describe('Store', () => {
   it('exposes the current value and changes through its read-only interface', () => {

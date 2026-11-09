@@ -59,6 +59,11 @@ Keep package-specific dependencies and scripts in the relevant package. See
 [packages/README.md](./packages/README.md) for workspace and TypeScript project configuration.
 Do not commit generated output, dependencies, or secrets.
 
+Run `pnpm --filter @fable/sandbox dev` to open the web sandbox. Its Vite server loads Fable
+source directly, so changes to the package are reflected during development. Use
+`pnpm --filter @fable/sandbox build` for a production build and
+`pnpm --filter @fable/sandbox preview` to preview it.
+
 ## Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) messages, for example

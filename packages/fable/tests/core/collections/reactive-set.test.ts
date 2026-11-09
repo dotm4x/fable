@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { ReactiveSet, type ReadOnlySignal } from '../../source/index.js'
+import { ReactiveSet, type ReadOnlySignal } from '../../../source/index.js'
 
 describe('ReactiveSet', () => {
   it('exposes read-only signals and permits disconnecting subscriptions', () => {

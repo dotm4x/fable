@@ -18,7 +18,7 @@ class TestGame extends Game {}
 describe('Module', () => {
   it('exposes an immutable copy of dependency classes', () => {
     const dependencies: ModuleType[] = [DependencyModule]
-    const module = new TestModule('b', dependencies)
+    const module = new TestModule({ identifier: 'b', dependencies })
     dependencies.push(OtherModule)
 
     expect(module.identifier).toBe('b')
@@ -28,9 +28,9 @@ describe('Module', () => {
   })
 
   it('only exposes declared dependencies after injection', () => {
-    const dependency = new DependencyModule('a')
-    const other = new OtherModule('other')
-    const consumer = new ConsumerModule('b', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'a' })
+    const other = new OtherModule({ identifier: 'other' })
+    const consumer = new ConsumerModule({ identifier: 'b', dependencies: [DependencyModule] })
     expect(() => consumer.dependency(DependencyModule)).toThrow('not been injected')
     const game = new TestGame([dependency, other, consumer])
     game.start()

@@ -1,30 +1,48 @@
-import { Game, Module } from '@dotm4x/fable'
+import {
+  Channel,
+  ChannelPriority,
+  Game,
+  type Module,
+  Scheduler,
+  type Updatable,
+  type UpdateContext,
+} from '@dotm4x/fable'
 
-class WorldModule extends Module {
-  public constructor() {
-    super('world')
+class MyScheduler extends Scheduler {
+  public main: Channel
+
+  public constructor(game: MyGame) {
+    super()
+    this.main = new Channel({
+      identifier: 'main',
+      targetUpdateRate: 60,
+      priority: ChannelPriority.normal,
+      entries: [game],
+    })
+  }
+
+  protected override *compose(): Generator<Channel> {
+    yield this.main
   }
 }
 
-class GreetingModule extends Module {
+class MyGame extends Game implements Updatable {
+  public scheduler: MyScheduler
+
   public constructor() {
-    super('greeting', [WorldModule])
+    super()
+    this.scheduler = new MyScheduler(this)
   }
 
-  protected override onStart(): void {
-    const world = this.require(WorldModule)
-    console.warn(`Hello from ${world.identifier}!`)
-  }
-}
-
-class ExampleGame extends Game {
   protected override *compose(): Generator<Module> {
-    yield new GreetingModule()
-    yield new WorldModule()
+    yield this.scheduler
+  }
+
+  public update(context: UpdateContext): void {
+    console.warn(`update: ${String(context.deltaTime)}`)
   }
 }
 
-const game = new ExampleGame()
+const game = new MyGame()
 game.start()
-game.stop()
-game.destroy()
+game.scheduler.run()

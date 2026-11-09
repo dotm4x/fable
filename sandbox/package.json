@@ -4,11 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @dotm4x/fable build && tsc -p tsconfig.json",
-    "start": "pnpm build && node dist/index.js",
+    "build": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json && vite build",
+    "dev": "pnpm --filter @dotm4x/fable build && vite",
+    "start": "pnpm dev",
+    "preview": "vite preview",
     "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@dotm4x/fable": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.6"
   }
 }

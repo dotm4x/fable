@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { Event, type ReadOnlyEvent, type ReadOnlyEventConnection } from '../../source/index.js'
+import { Event, type ReadOnlyEvent, type ReadOnlyEventConnection } from '../../../source/index.js'
 
 describe('Event', () => {
   it('exposes subscriptions and connection state through read-only interfaces', () => {

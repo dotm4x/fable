@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { type Vector, Vector3 } from '../../../../source/index.js'
+import { type Vector, Vector3 } from '../../../../../source/index.js'
 
 describe('Vector3', () => {
   it('supports the shared vector contract', () => {

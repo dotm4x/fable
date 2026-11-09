@@ -4,7 +4,7 @@ import {
   Destroyable,
   type DestroyableLifecycle,
   type ReadOnlyDestroyable,
-} from '../../source/index.js'
+} from '../../../source/index.js'
 
 describe('Destroyable', () => {
   it('exposes its lifecycle state through read-only and destroyable contracts', () => {

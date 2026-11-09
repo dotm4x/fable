@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { ReactiveMap, type ReadOnlySignal } from '../../source/index.js'
+import { ReactiveMap, type ReadOnlySignal } from '../../../source/index.js'
 
 describe('ReactiveMap', () => {
   it('exposes read-only signals for each event', () => {

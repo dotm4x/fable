@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { Game, GameState, Module, ModuleState, type ModuleType } from '../source/index.js'
+import { Game, GameState, Module, ModuleState, type ModuleType } from '../../source/index.js'
 
 class TestModule extends Module {
   public startHook: () => void = vi.fn()
@@ -85,8 +85,8 @@ describe('Game', () => {
   })
 
   it('preserves the error when a module is destroyed during startup', () => {
-    const first = new TestModule('first')
-    const second = new TestModule('second')
+    const first = new TestModule({ identifier: 'first' })
+    const second = new TestModule({ identifier: 'second' })
     first.startHook = () => {
       second.destroy()
     }
@@ -102,8 +102,11 @@ describe('Game', () => {
 
   it('composes once, injects declared dependencies, and starts and stops in dependency order', () => {
     const calls: string[] = []
-    const dependency = new DependencyModule('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     dependency.startHook = () => calls.push('dependency start')
     consumer.startHook = () => {
       expect(consumer.dependency(DependencyModule)).toBe(dependency)
@@ -138,8 +141,13 @@ describe('Game', () => {
   })
 
   it('rejects duplicate, missing, and circular dependencies', () => {
-    expect(() => new TestGame([new TestModule('a'), new TestModule('a')])).toThrow('Duplicate')
-    const missing = new TestGame([new ConsumerModule('a', [MissingModule])])
+    expect(
+      () =>
+        new TestGame([new TestModule({ identifier: 'a' }), new TestModule({ identifier: 'a' })]),
+    ).toThrow('Duplicate')
+    const missing = new TestGame([
+      new ConsumerModule({ identifier: 'a', dependencies: [MissingModule] }),
+    ])
     expect(() => {
       missing.start()
     }).toThrow('missing dependency')
@@ -147,8 +155,8 @@ describe('Game', () => {
       missing.start()
     }).toThrow('missing dependency')
     const cyclic = new TestGame([
-      new ConsumerModule('a', [DependencyModule]),
-      new DependencyModule('b', [ConsumerModule]),
+      new ConsumerModule({ identifier: 'a', dependencies: [DependencyModule] }),
+      new DependencyModule({ identifier: 'b', dependencies: [ConsumerModule] }),
     ])
     expect(() => {
       cyclic.start()
@@ -157,16 +165,22 @@ describe('Game', () => {
 
   it('resolves subclasses and rejects ambiguous matches before starting modules', () => {
     class DerivedDependency extends DependencyModule {}
-    const dependency = new DerivedDependency('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DerivedDependency({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     const game = new TestGame([consumer, dependency])
     game.start()
     expect(consumer.dependency(DependencyModule)).toBe(dependency)
     game.stop()
 
-    const first = new DependencyModule('first')
-    const second = new DerivedDependency('second')
-    const ambiguousConsumer = new ConsumerModule('consumer', [DependencyModule])
+    const first = new DependencyModule({ identifier: 'first' })
+    const second = new DerivedDependency({ identifier: 'second' })
+    const ambiguousConsumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     const ambiguous = new TestGame([ambiguousConsumer, first, second])
     expect(() => {
       ambiguous.start()
@@ -177,15 +191,20 @@ describe('Game', () => {
   })
 
   it('rejects a dependency resolved to the module itself', () => {
-    const game = new TestGame([new ConsumerModule('self', [ConsumerModule])])
+    const game = new TestGame([
+      new ConsumerModule({ identifier: 'self', dependencies: [ConsumerModule] }),
+    ])
     expect(() => {
       game.start()
     }).toThrow('self -> self')
   })
 
   it('cleans up a partially started module and rolls back earlier modules', () => {
-    const dependency = new DependencyModule('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     const cleanup = vi.fn()
     const rollback = vi.fn()
     dependency.stopHook = rollback
@@ -204,7 +223,7 @@ describe('Game', () => {
   })
 
   it('rolls back after a game startup hook fails', () => {
-    const module = new TestModule('module')
+    const module = new TestModule({ identifier: 'module' })
     const stopped = vi.fn()
     module.stopHook = stopped
     const game = new TestGame([module])
@@ -221,7 +240,7 @@ describe('Game', () => {
   })
 
   it('recovers after a running state notification fails', () => {
-    const module = new TestModule('module')
+    const module = new TestModule({ identifier: 'module' })
     const stopped = vi.fn()
     module.stopHook = stopped
     module.state.connect(({ value }) => {
@@ -240,8 +259,11 @@ describe('Game', () => {
   })
 
   it('retries failed shutdown without stopping dependencies prematurely', () => {
-    const dependency = new DependencyModule('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     consumer.stopHook = vi.fn().mockImplementationOnce(() => {
       throw new Error('stop failed')
     })
@@ -272,8 +294,8 @@ describe('Game', () => {
   })
 
   it('cleans up a duplicate composed module without destroying the registered module', () => {
-    const original = new TestModule('module')
-    const duplicate = new TestModule('module')
+    const original = new TestModule({ identifier: 'module' })
+    const duplicate = new TestModule({ identifier: 'module' })
     const game = new TestGame([original])
     game.composed.push(duplicate)
     expect(() => {
@@ -286,8 +308,11 @@ describe('Game', () => {
   })
 
   it('keeps dependencies running after failed cleanup and retries shutdown', () => {
-    const dependency = new DependencyModule('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     consumer.startHook = () => {
       throw new Error('startup failed')
     }
@@ -313,8 +338,11 @@ describe('Game', () => {
   })
 
   it('destroys owned modules in reverse order and retries failed destruction', () => {
-    const dependency = new DependencyModule('dependency')
-    const consumer = new ConsumerModule('consumer', [DependencyModule])
+    const dependency = new DependencyModule({ identifier: 'dependency' })
+    const consumer = new ConsumerModule({
+      identifier: 'consumer',
+      dependencies: [DependencyModule],
+    })
     const consumerDestroy = vi.fn()
     const dependencyDestroy = vi.fn().mockImplementationOnce(() => {
       throw new Error('destroy failed')
@@ -354,7 +382,7 @@ describe('Game', () => {
       }
     }
 
-    const module = new LateFailingModule('module')
+    const module = new LateFailingModule({ identifier: 'module' })
     const game = new TestGame([module])
     expect(() => {
       game.destroy()

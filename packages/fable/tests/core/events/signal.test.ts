@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
-import { EventConnection, type ReadOnlySignal, Signal } from '../../source/index.js'
+import { EventConnection, type ReadOnlySignal, Signal } from '../../../source/index.js'
 
 describe('Signal', () => {
   it('exposes subscriptions without mutation methods through its read-only interface', () => {
