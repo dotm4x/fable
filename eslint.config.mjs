@@ -217,5 +217,9 @@ export default defineConfig(
       ],
     },
   },
+  {
+    files: ['packages/fable/source/modules/logger/outputs/console.ts'],
+    rules: { 'no-console': 'off' },
+  },
   eslintConfigPrettier,
 )
