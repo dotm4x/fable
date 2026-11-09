@@ -1,37 +1,78 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ImageImporter } from '../../../../source/index.js'
+import { Image, ImageImporter } from '../../../source/index.js'
 
-function createImage(): { image: ImageBitmap; close: ReturnType<typeof vi.fn> } {
-  const close = vi.fn()
-  const image = { width: 4, height: 2, close } as unknown as ImageBitmap
+interface TestCanvasContext {
+  readonly drawImage: () => void
+  readonly getImageData: () => ImageData
+}
 
-  return { image, close }
+class TestCanvas {
+  public static readonly instances: TestCanvas[] = []
+
+  public readonly context: TestCanvasContext
+  public readonly height: number
+  public readonly width: number
+
+  public constructor(width: number, height: number) {
+    this.width = width
+    this.height = height
+    this.context = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn(
+        () => ({ data: new Uint8ClampedArray([255, 0, 0, 255]) }) as unknown as ImageData,
+      ),
+    }
+    TestCanvas.instances.push(this)
+  }
+
+  public getContext(): TestCanvasContext | null {
+    return this.context
+  }
+}
+
+class NoContextCanvas {
+  public getContext(): null {
+    return null
+  }
 }
 
 describe('ImageImporter', () => {
   afterEach(() => {
+    TestCanvas.instances.length = 0
     vi.unstubAllGlobals()
   })
 
-  it('supports image extensions and decodes bodies with createImageBitmap', async () => {
+  function createBitmap(): { bitmap: ImageBitmap; close: ReturnType<typeof vi.fn> } {
+    const close = vi.fn()
+    const bitmap = { width: 1, height: 1, close } as unknown as ImageBitmap
+
+    return { bitmap, close }
+  }
+
+  it('supports image extensions and decodes bodies into pixel data', async () => {
     const controller = new AbortController()
     const fetchMock = vi.fn((source: string) => Promise.resolve(new Response(source)))
-    const { image, close } = createImage()
-    const decodeMock = vi.fn(() => Promise.resolve(image))
+    const { bitmap, close } = createBitmap()
+    const decodeMock = vi.fn(() => Promise.resolve(bitmap))
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('createImageBitmap', decodeMock)
+    vi.stubGlobal('OffscreenCanvas', TestCanvas)
 
     const importer = new ImageImporter()
     const imported = await importer.load('image.webp', controller.signal)
 
     expect(importer.extensions).toEqual(['.png', '.jpg', '.jpeg', '.webp'])
-    expect(imported.value).toBe(image)
+    expect(imported.value).toBeInstanceOf(Image)
+    expect(imported.value.width).toBe(1)
+    expect(imported.value.height).toBe(1)
+    expect([...imported.value.data]).toEqual([255, 0, 0, 255])
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith('image.webp', { signal: controller.signal })
     expect(decodeMock).toHaveBeenCalledExactlyOnceWith(expect.any(Blob))
+    expect(close).toHaveBeenCalledOnce()
 
     imported.release?.()
-    expect(close).toHaveBeenCalledOnce()
+    expect(imported.value.destroyed).toBe(true)
   })
 
   it('rejects unsuccessful responses without decoding', async () => {
@@ -63,6 +104,23 @@ describe('ImageImporter', () => {
     ).rejects.toThrow('cannot be decoded')
   })
 
+  it('rejects requests without a two-dimensional canvas context', async () => {
+    const { bitmap } = createBitmap()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('image'))),
+    )
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => Promise.resolve(bitmap)),
+    )
+    vi.stubGlobal('OffscreenCanvas', NoContextCanvas)
+
+    await expect(
+      new ImageImporter().load('image.png', new AbortController().signal),
+    ).rejects.toThrow('canvas context is unavailable')
+  })
+
   it('propagates aborted requests', async () => {
     vi.stubGlobal(
       'fetch',
@@ -74,8 +132,9 @@ describe('ImageImporter', () => {
     )
     vi.stubGlobal(
       'createImageBitmap',
-      vi.fn(() => Promise.resolve(createImage().image)),
+      vi.fn(() => Promise.resolve(createBitmap().bitmap)),
     )
+    vi.stubGlobal('OffscreenCanvas', TestCanvas)
     const controller = new AbortController()
     controller.abort()
 
@@ -84,9 +143,9 @@ describe('ImageImporter', () => {
     )
   })
 
-  it('closes the bitmap when the request is aborted during decoding', async () => {
+  it('closes the bitmap and rejects when aborted during decoding', async () => {
     const controller = new AbortController()
-    const { image, close } = createImage()
+    const { bitmap, close } = createBitmap()
     let resolveDecode: (value: ImageBitmap) => void = () => undefined
     const decodeMock = vi.fn(
       () =>
@@ -99,13 +158,14 @@ describe('ImageImporter', () => {
       vi.fn(() => Promise.resolve(new Response('image'))),
     )
     vi.stubGlobal('createImageBitmap', decodeMock)
+    vi.stubGlobal('OffscreenCanvas', TestCanvas)
 
     const pending = new ImageImporter().load('image.png', controller.signal)
     await vi.waitFor(() => {
       expect(decodeMock).toHaveBeenCalledOnce()
     })
     controller.abort()
-    resolveDecode(image)
+    resolveDecode(bitmap)
 
     await expect(pending).rejects.toThrow()
     expect(close).toHaveBeenCalledOnce()
