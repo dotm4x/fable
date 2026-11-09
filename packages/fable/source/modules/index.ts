@@ -1,3 +1,4 @@
+export * from './assets/index.js'
 export * from './input/index.js'
 export * from './logger/index.js'
 export * from './scenes/index.js'
