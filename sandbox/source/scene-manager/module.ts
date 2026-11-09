@@ -1,12 +1,15 @@
 import { SceneManager } from '@dotm4x/fable'
 
+import { MyInputManager } from '../input-manager/module.js'
+
 import { MainScene } from './scenes/main.js'
 
 export class MySceneManager extends SceneManager {
   public main: MainScene
 
   public constructor() {
-    super({ initial: new MainScene() })
-    this.main = new MainScene()
+    const main = new MainScene()
+    super({ initial: main, dependencies: [{ type: MyInputManager }] })
+    this.main = main
   }
 }

@@ -1,8 +1,8 @@
 import { Game, type Module, type Updatable } from '@dotm4x/fable'
 
-import { MyInputManager } from './input-manager/manager.js'
-import { MySceneManager } from './scene-manager/manager.js'
-import { MyScheduler } from './scheduler/scheduler.js'
+import { MyInputManager } from './input-manager/module.js'
+import { MySceneManager } from './scene-manager/module.js'
+import { MyScheduler } from './scheduler/module.js'
 
 export class Sandbox extends Game implements Updatable {
   public scheduler: MyScheduler
