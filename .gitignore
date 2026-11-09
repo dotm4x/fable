@@ -12,3 +12,6 @@ coverage/
 # Local editor and OS files
 .DS_Store
 *.swp
+
+# Editor/FUSE temp files
+.fuse_hidden*
