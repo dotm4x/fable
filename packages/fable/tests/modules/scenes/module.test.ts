@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { Game, Logger, Module, Node, ScenesModule } from '../../../source/index.js'
+import { Game, LoggerModule, Module, Node, ScenesModule } from '../../../source/index.js'
 
 class TestGame extends Game {}
 
@@ -34,10 +34,10 @@ describe('ScenesModule', () => {
     }
     class Consumer extends Node {
       public service: Service | undefined
-      public logger: Logger | undefined
+      public logger: LoggerModule | undefined
       protected override configure(): void {
         this.service = this.require(Service)
-        this.logger = this.optional(Logger)
+        this.logger = this.optional(LoggerModule)
       }
     }
     const scene = new Consumer({ name: 'scene' })
@@ -47,20 +47,20 @@ describe('ScenesModule', () => {
     game.start()
     expect(scene.service).toBe(service)
     expect(scene.logger).toBeUndefined()
-    expect(manager.dependencies).toContainEqual({ type: Logger, optional: true })
+    expect(manager.dependencies).toContainEqual({ type: LoggerModule, optional: true })
     game.stop()
     game.destroy()
   })
 
   it('exposes an available optional logger to nodes', () => {
     class Consumer extends Node {
-      public logger: Logger | undefined
+      public logger: LoggerModule | undefined
       protected override configure(): void {
-        this.logger = this.optional(Logger)
+        this.logger = this.optional(LoggerModule)
       }
     }
     const scene = new Consumer()
-    const logger = new Logger()
+    const logger = new LoggerModule()
     const game = new TestGame([new ScenesModule({ initial: scene }), logger])
     game.start()
     expect(scene.logger).toBe(logger)

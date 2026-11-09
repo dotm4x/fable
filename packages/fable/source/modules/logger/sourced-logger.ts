@@ -1,10 +1,10 @@
 import { type SourcedLogOptions } from './message.js'
-import { type Logger } from './module.js'
+import { type LoggerModule } from './module.js'
 
-/** Logger bound to a source; it borrows the underlying logger. */
+/** Logger bound to a source; it borrows the underlying logger module. */
 export class SourcedLogger {
   public constructor(
-    private readonly _logger: Logger,
+    private readonly _logger: LoggerModule,
     public readonly source: string,
   ) {}
 

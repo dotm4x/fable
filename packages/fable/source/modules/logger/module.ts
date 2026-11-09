@@ -8,7 +8,7 @@ import { type LogMessage, LogMessageKind, type LogOptions } from './message.js'
 import { SourcedLogger } from './sourced-logger.js'
 
 /** Configuration for a logger. */
-export interface LoggerOptions {
+export interface LoggerModuleOptions {
   /** Initial outputs whose ownership transfers to the logger. */
   readonly outputs?: Iterable<LogOutput>
 }
@@ -19,9 +19,9 @@ export interface LoggerOptions {
  * Adding an output transfers ownership; deleting or clearing it returns
  * ownership without destroying it. Messages can be logged before startup.
  */
-export class Logger extends Module {
+export class LoggerModule extends Module {
   private readonly _preparation: Once = new Once(
-    'Logger preparation has already failed or is in progress.',
+    'Logger module preparation has already failed or is in progress.',
   )
   private readonly _onLog: Signal<LogMessage> = new Signal<LogMessage>()
 
@@ -31,8 +31,8 @@ export class Logger extends Module {
   /** Fired after a message reaches all outputs. Listener errors propagate. */
   public readonly onLog: ReadOnlySignal<LogMessage> = this._onLog
 
-  public constructor({ outputs = [] }: LoggerOptions = {}) {
-    super({ identifier: 'org.js.fable.Logger' })
+  public constructor({ outputs = [] }: LoggerModuleOptions = {}) {
+    super({ identifier: 'org.js.fable.LoggerModule' })
     this.outputs = new ReactiveSet(outputs)
   }
 

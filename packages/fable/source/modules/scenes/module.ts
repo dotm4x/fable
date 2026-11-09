@@ -3,7 +3,7 @@ import { Module, type ModuleDependency, ModuleState, type ModuleType } from '#co
 import { type Node, type NodeContext, nodeOwnership } from '#core/node/node.js'
 import { Once } from '#core/primitives/once.js'
 
-import { Logger } from '../logger/module.js'
+import { LoggerModule } from '../logger/module.js'
 
 /** Configuration for the scenes module. */
 export interface ScenesModuleOptions {
@@ -11,7 +11,7 @@ export interface ScenesModuleOptions {
   readonly initial: Node
   /** Additional scenes whose ownership transfers to the module. */
   readonly scenes?: Iterable<Node>
-  /** Dependencies accessible to managed nodes. Logger is optional by default. */
+  /** Dependencies accessible to managed nodes. LoggerModule is optional by default. */
   readonly dependencies?: Iterable<ModuleDependency>
 }
 
@@ -39,8 +39,8 @@ export class ScenesModule extends Module {
 
   public constructor({ initial, scenes = [], dependencies = [] }: ScenesModuleOptions) {
     const declared = [...dependencies]
-    if (!declared.some((dependency) => dependency.type === Logger)) {
-      declared.push({ type: Logger, optional: true })
+    if (!declared.some((dependency) => dependency.type === LoggerModule)) {
+      declared.push({ type: LoggerModule, optional: true })
     }
     super({ identifier: 'org.js.fable.ScenesModule', dependencies: declared })
     this._context = {

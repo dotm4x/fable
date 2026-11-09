@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   Game,
-  Logger,
+  LoggerModule,
   type LogMessage,
   LogMessageKind,
   LogOutput,
@@ -23,7 +23,7 @@ class TestOutput extends LogOutput {
   }
 }
 
-describe('Logger', () => {
+describe('LoggerModule', () => {
   it('dispatches in priority order, then notifies subscribers', () => {
     const calls: string[] = []
     const low = new TestOutput(LogOutputPriority.low)
@@ -34,7 +34,7 @@ describe('Logger', () => {
     high.hook = () => {
       calls.push('high')
     }
-    const logger = new Logger({ outputs: [low, high] })
+    const logger = new LoggerModule({ outputs: [low, high] })
     logger.onLog.connect(() => {
       calls.push('event')
     })
@@ -48,7 +48,7 @@ describe('Logger', () => {
 
   it('uses default message options and supports bound sources', () => {
     const output = new TestOutput()
-    const logger = new Logger({ outputs: [output] })
+    const logger = new LoggerModule({ outputs: [output] })
     logger.log('default')
     const source = logger.from('renderer')
     source.log('warning', { kind: LogMessageKind.warn })
@@ -65,7 +65,7 @@ describe('Logger', () => {
 
   it('composes and configures once across game restarts', () => {
     const output = new TestOutput()
-    class TestLogger extends Logger {
+    class TestLoggerModule extends LoggerModule {
       public configureCount: number = 0
       protected override *compose(): Generator<LogOutput> {
         yield output
@@ -75,7 +75,7 @@ describe('Logger', () => {
         expect(this.outputs.has(output)).toBe(true)
       }
     }
-    const logger = new TestLogger()
+    const logger = new TestLoggerModule()
     const game = new TestGame([logger])
     game.start()
     game.stop()
@@ -87,30 +87,30 @@ describe('Logger', () => {
   })
 
   it('does not retry failed configuration', () => {
-    class TestLogger extends Logger {
+    class TestLoggerModule extends LoggerModule {
       protected override configure(): void {
         throw new Error('configure failed')
       }
     }
-    const logger = new TestLogger()
+    const logger = new TestLoggerModule()
     const game = new TestGame([logger])
     expect(() => {
       game.start()
     }).toThrow('configure failed')
     expect(() => {
       game.start()
-    }).toThrow('Logger preparation')
+    }).toThrow('Logger module preparation')
     game.destroy()
   })
 
   it('cleans up an unregistered composed output when registration fails', () => {
     const output = new TestOutput()
-    class TestLogger extends Logger {
+    class TestLoggerModule extends LoggerModule {
       protected override *compose(): Generator<LogOutput> {
         yield output
       }
     }
-    const logger = new TestLogger()
+    const logger = new TestLoggerModule()
     logger.outputs.onAdd.connect((added) => {
       logger.outputs.delete(added)
       throw new Error('registration failed')
@@ -122,14 +122,14 @@ describe('Logger', () => {
     expect(output.destroyed).toBe(true)
     expect(() => {
       game.start()
-    }).toThrow('Logger preparation')
+    }).toThrow('Logger module preparation')
     game.destroy()
   })
 
   it('uses a snapshot and propagates output failures without emitting success', () => {
     const first = new TestOutput(LogOutputPriority.high)
     const second = new TestOutput()
-    const logger = new Logger({ outputs: [first, second] })
+    const logger = new LoggerModule({ outputs: [first, second] })
     first.hook = () => {
       logger.outputs.delete(second)
     }
@@ -161,7 +161,7 @@ describe('Logger', () => {
     }
     const first = new TestOutput()
     const second = new FailingOutput()
-    const logger = new Logger({ outputs: [first, second] })
+    const logger = new LoggerModule({ outputs: [first, second] })
     const game = new TestGame([logger])
     game.start()
     expect(() => {
