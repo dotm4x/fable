@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'packages/fable/**'
+      - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/fable.yml'
   pull_request:
     paths:
       - 'packages/fable/**'
+      - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/fable.yml'
@@ -48,3 +50,9 @@ jobs:
 
       - name: Build
         run: pnpm --filter @dotm4x/fable build
+
+      - name: Install GPU test browser
+        run: pnpm --filter @fable/sandbox exec playwright install --with-deps chromium
+
+      - name: GPU tests
+        run: pnpm --filter @fable/sandbox test:gpu
