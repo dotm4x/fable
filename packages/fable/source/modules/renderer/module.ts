@@ -2,18 +2,19 @@ import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
 import { Store } from '#/core/events/store.js'
 import { Module, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
-import { ClearCommand } from '#/graphics/commands/clear.js'
 import { Color } from '#/graphics/primitives/color.js'
-import { Viewport } from '#/graphics/primitives/viewport.js'
-import { type RenderTarget } from '#/graphics/resources/targets/target.js'
-import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
 import { type UpdateContext } from '../time/context.js'
 import { type Updatable } from '../time/interfaces/updatable.js'
 
 import { type RenderBackend } from './backends/backend.js'
+import {
+  ClearRenderPass,
+  type RenderPass,
+  type RenderPassContext,
+  SpaceRenderPass,
+} from './passes/index.js'
 import { type RenderSpace } from './spaces/space.js'
-import { RenderContext } from './context.js'
 
 /** Configuration for the renderer module. */
 export interface RendererModuleOptions {
@@ -21,6 +22,8 @@ export interface RendererModuleOptions {
   readonly backend: RenderBackend
   /** Initial spaces whose ownership transfers to the module. */
   readonly spaces?: Iterable<RenderSpace>
+  /** Additional passes whose ownership transfers to the module. */
+  readonly passes?: Iterable<RenderPass>
   /** Color used to clear the drawing surface. Defaults to black. */
   readonly clearColor?: Color
 }
@@ -28,16 +31,18 @@ export interface RendererModuleOptions {
 /**
  * Draws registered spaces through a rendering backend.
  *
- * The module owns its backend and spaces. Each frame clears the surface once
- * and collects the commands of every space in priority order, using the space
- * camera and the backend viewport. Spaces without a camera are rejected before
- * their commands are produced.
+ * The module owns its backend, spaces and passes. Each frame executes the
+ * registered passes in priority order; the built-in clear and space passes
+ * clear every surface once and collect the commands of every space, using the
+ * space camera and the backend viewport. Additional passes extend the pipeline
+ * before, between or after them.
  */
 export class RendererModule extends Module implements Updatable {
   private readonly _preparation: Once = new Once(
     'Renderer module preparation has already failed or is in progress.',
   )
   private readonly _spaces: IdentifiableSet<RenderSpace> = new IdentifiableSet<RenderSpace>()
+  private readonly _passes: IdentifiableSet<RenderPass> = new IdentifiableSet<RenderPass>()
   private _rendering: boolean = false
 
   /** Backend owned by this module. */
@@ -50,11 +55,19 @@ export class RendererModule extends Module implements Updatable {
    * @param options - Backend, initial spaces and clear color.
    * @throws {@link Error} If space identifiers are duplicated.
    */
-  public constructor({ backend, spaces = [], clearColor = Color.black }: RendererModuleOptions) {
+  public constructor({
+    backend,
+    spaces = [],
+    passes = [],
+    clearColor = Color.black,
+  }: RendererModuleOptions) {
     super({ identifier: 'org.js.fable.RendererModule' })
     this.backend = backend
     this.clearColor = new Store(clearColor)
+    this._passes.add(new ClearRenderPass())
+    this._passes.add(new SpaceRenderPass())
     for (const space of spaces) this._spaces.add(space)
+    for (const pass of passes) this._passes.add(pass)
   }
 
   /** Spaces indexed by identifier. The module retains ownership. */
@@ -62,6 +75,13 @@ export class RendererModule extends Module implements Updatable {
     const spaces = new Map<string, RenderSpace>()
     for (const space of this._spaces) spaces.set(space.identifier, space)
     return spaces
+  }
+
+  /** Passes indexed by identifier. The module retains ownership. */
+  public get passes(): ReadonlyMap<string, RenderPass> {
+    const passes = new Map<string, RenderPass>()
+    for (const pass of this._passes) passes.set(pass.identifier, pass)
+    return passes
   }
 
   /** Yields additional spaces whose ownership transfers to the module, once. */
@@ -106,17 +126,42 @@ export class RendererModule extends Module implements Updatable {
     return space
   }
 
+  /**
+   * Registers a pass, transferring its ownership to the module.
+   *
+   * @param pass - Pass to register.
+   * @throws {@link Error} If the pass is destroyed or its identifier is duplicated.
+   */
+  public addPass(pass: RenderPass): void {
+    this.throwIfDestroyed()
+    this._passes.add(pass)
+  }
+
+  /**
+   * Removes a pass and returns its ownership to the caller.
+   *
+   * @param identifier - Identifier of the pass to remove.
+   * @returns The removed pass, or undefined when it is not registered.
+   */
+  public removePass(identifier: string): RenderPass | undefined {
+    this.throwIfDestroyed()
+    const pass = this._passes.get(identifier)
+    if (pass === undefined) return undefined
+    this._passes.delete(pass)
+    return pass
+  }
+
   /** @inheritDoc */
   public update(context: UpdateContext): void {
     this.render(context.deltaTime)
   }
 
   /**
-   * Draws the registered spaces.
+   * Draws the registered spaces through the pipeline passes.
    *
-   * The surface and every used offscreen target are cleared once, then each
-   * space collects its commands and the backend executes them in priority
-   * order. Failed drawing still ends the active frame.
+   * Passes run in priority order inside a single frame; the built-in passes
+   * clear every surface once and draw the spaces in priority order. Failed
+   * drawing still ends the active frame.
    *
    * @param deltaTime - Delta time offered to drawable objects, in seconds.
    * @throws {@link Error} If the module is not running or a space has no camera.
@@ -135,21 +180,15 @@ export class RendererModule extends Module implements Updatable {
       const backend = this.backend
       backend.beginFrame()
       try {
-        const clear = new ClearCommand(this.clearColor.value)
-        const cleared = new Set<RenderTarget>()
-        backend.render([clear])
         const spaces = [...this._spaces].sort((left, right) => left.priority - right.priority)
-        for (const space of spaces) {
-          const target = space.target.value
-          if (target !== undefined && !cleared.has(target)) {
-            cleared.add(target)
-            backend.render([new ClearCommand(this.clearColor.value)], undefined, target)
-          }
-          const viewport =
-            target === undefined ? backend.viewport : new Viewport(new Vector2(0, 0), target.size)
-          const context = new RenderContext(deltaTime, space.camera.value, viewport)
-          backend.render(space.collect(context), context, target)
+        const context: RenderPassContext = {
+          backend,
+          deltaTime,
+          clearColor: this.clearColor.value,
+          spaces,
         }
+        const passes = [...this._passes].sort((left, right) => left.priority - right.priority)
+        for (const pass of passes) pass.execute(context)
       } finally {
         backend.endFrame()
       }
@@ -162,6 +201,10 @@ export class RendererModule extends Module implements Updatable {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+    for (const pass of [...this._passes]) {
+      if (!pass.destroyed) pass.destroy()
+    }
+    this._passes.clear()
     for (const space of [...this._spaces]) {
       if (!space.destroyed) space.destroy()
     }

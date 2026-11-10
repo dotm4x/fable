@@ -77,6 +77,31 @@ export class FakeWebGl2 {
     return { type }
   }
 
+  public createProgram(): unknown {
+    this.calls.push({ name: 'createProgram', args: [] })
+    return { program: true }
+  }
+
+  public createBuffer(): unknown {
+    return { buffer: true }
+  }
+
+  public createVertexArray(): unknown {
+    return { vertexArray: true }
+  }
+
+  public createTexture(): unknown {
+    return { texture: true }
+  }
+
+  public createFramebuffer(): unknown {
+    return { framebuffer: true }
+  }
+
+  public createRenderbuffer(): unknown {
+    return { renderbuffer: true }
+  }
+
   public getShaderParameter(): boolean {
     return true
   }

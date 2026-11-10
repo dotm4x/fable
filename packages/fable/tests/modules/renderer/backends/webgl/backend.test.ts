@@ -12,6 +12,7 @@ import {
   Image,
   ImageTexture,
   Matrix3x2,
+  Matrix4x4,
   RasterImageFormat,
   RenderContext,
   RenderTarget,
@@ -266,5 +267,58 @@ describe('WebGlBackend', () => {
       backend.endFrame()
     }).not.toThrow()
     backend.destroy()
+  })
+
+  it('uploads custom material uniforms', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    material.setUniform('uTint', new Color(0.1, 0.2, 0.3, 0.4))
+    material.setUniform('uScale', new Vector2(2, 3))
+    material.setUniform('uTime', 0.5)
+    material.setUniform('uFrame', Matrix4x4.identity)
+
+    backend.beginFrame()
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+
+    const names = (call: string): unknown[] =>
+      harness.gl.callsTo(call).map((item) => (item.args[0] as { name: string }).name)
+    expect(names('uniform4f')).toContain('uTint')
+    expect(names('uniform2f')).toContain('uScale')
+    expect(names('uniform1f')).toContain('uTime')
+    expect(names('uniformMatrix4fv')).toContain('uFrame')
+    backend.destroy()
+  })
+
+  it('multisamples render targets and resolves them before sampling', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(64, 32))
+    const sampler = new TextureSampler()
+    const material = createMaterial([new TextureBinding(target, sampler)])
+
+    backend.beginFrame()
+    backend.render([createCommand(material)], createContext(), target)
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('renderbufferStorageMultisample')).toHaveLength(1)
+    expect(harness.gl.callsTo('blitFramebuffer')).toHaveLength(1)
+    backend.destroy()
+    sampler.destroy()
+    target.destroy()
+  })
+
+  it('skips multisampling when the target requests one sample', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(64, 32), { sampleCount: 1 })
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, target)
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('renderbufferStorageMultisample')).toHaveLength(0)
+    expect(harness.gl.callsTo('blitFramebuffer')).toHaveLength(0)
+    backend.destroy()
+    target.destroy()
   })
 })

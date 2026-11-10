@@ -17,6 +17,7 @@ export interface GlProgram {
   readonly transform: WebGLUniformLocation
   readonly viewProjection: WebGLUniformLocation
   readonly textures: WebGLUniformLocation
+  readonly uniforms: Map<string, WebGLUniformLocation | null>
 }
 
 /** A mesh uploaded into a vertex array object. */
@@ -29,8 +30,16 @@ export interface GlMesh {
 
 /** A framebuffer and its color texture. */
 export interface GlTarget {
+  /** Framebuffer that receives drawing commands. */
   readonly framebuffer: WebGLFramebuffer
+  /** Single-sample texture holding the resolved contents. */
   readonly texture: WebGLTexture
+  /** Multisample framebuffer resolved into {@link texture}, when multisampled. */
+  readonly resolveFramebuffer: WebGLFramebuffer | undefined
+  /** Multisample color renderbuffer, when multisampled. */
+  readonly renderbuffer: WebGLRenderbuffer | undefined
+  /** Number of samples drawn per pixel. */
+  readonly sampleCount: number
 }
 
 /** Compiles and caches GLSL programs per material. */
@@ -84,10 +93,34 @@ export class GlPrograms {
       )
     }
 
-    const glProgram: GlProgram = { program, viewProjection, transform, textures }
+    const glProgram: GlProgram = {
+      program,
+      viewProjection,
+      transform,
+      textures,
+      uniforms: new Map<string, WebGLUniformLocation | null>(),
+    }
     this._programs.set(material, glProgram)
 
     return glProgram
+  }
+
+  /**
+   * Returns the location of a custom uniform, or undefined when the shaders do
+   * not use it.
+   *
+   * Locations are resolved once per program.
+   *
+   * @param program - Program declaring the uniform.
+   * @param name - Uniform name.
+   */
+  public uniformLocation(program: GlProgram, name: string): WebGLUniformLocation | undefined {
+    const cached = program.uniforms.get(name)
+    if (cached !== undefined) return cached ?? undefined
+    const location = this._gl.getUniformLocation(program.program, name)
+    program.uniforms.set(name, location)
+
+    return location ?? undefined
   }
 
   /** Deletes one compiled program. */
@@ -297,29 +330,92 @@ export class GlTargets {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-    const framebuffer = required(gl.createFramebuffer(), 'Unable to create a framebuffer.')
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      gl.deleteFramebuffer(framebuffer)
-      gl.deleteTexture(texture)
-      throw new Error('The render target framebuffer is incomplete.')
-    }
+    const resolveFramebuffer = this.createFramebuffer(texture)
+    const multisampled = target.sampleCount > 1
+    const renderbuffer = multisampled
+      ? this.createRenderbuffer(target.sampleCount, size.x, size.y)
+      : undefined
+    const framebuffer = multisampled
+      ? this.createFramebuffer(renderbuffer ?? null, true)
+      : resolveFramebuffer
 
-    const glTarget: GlTarget = { framebuffer, texture }
+    const glTarget: GlTarget = {
+      framebuffer,
+      texture,
+      resolveFramebuffer: multisampled ? resolveFramebuffer : undefined,
+      renderbuffer,
+      sampleCount: target.sampleCount,
+    }
     this._targets.set(target, glTarget)
 
     return glTarget
   }
 
+  /**
+   * Resolves the multisample contents of a target into its texture.
+   *
+   * Single-sample targets are left untouched.
+   *
+   * @param target - Target to resolve.
+   * @param framebuffer - Framebuffer to restore afterwards.
+   */
+  public resolve(target: RenderTarget, framebuffer: WebGLFramebuffer | null): void {
+    const glTarget = this._targets.get(target)
+    if (glTarget?.resolveFramebuffer === undefined) return
+
+    const gl = this._gl
+    const size = target.size
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, glTarget.framebuffer)
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, glTarget.resolveFramebuffer)
+    gl.blitFramebuffer(0, 0, size.x, size.y, 0, 0, size.x, size.y, gl.COLOR_BUFFER_BIT, gl.NEAREST)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  }
+
   /** Deletes every cached framebuffer. */
   public clear(): void {
+    const gl = this._gl
     for (const target of this._targets.values()) {
-      this._gl.deleteFramebuffer(target.framebuffer)
-      this._gl.deleteTexture(target.texture)
+      gl.deleteFramebuffer(target.framebuffer)
+      if (target.resolveFramebuffer !== undefined) gl.deleteFramebuffer(target.resolveFramebuffer)
+      if (target.renderbuffer !== undefined) gl.deleteRenderbuffer(target.renderbuffer)
+      gl.deleteTexture(target.texture)
     }
     this._targets.clear()
+  }
+
+  private createFramebuffer(
+    attachment: WebGLTexture | WebGLRenderbuffer | null,
+    renderbuffer: boolean = false,
+  ): WebGLFramebuffer {
+    const gl = this._gl
+    const framebuffer = required(gl.createFramebuffer(), 'Unable to create a framebuffer.')
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+    if (renderbuffer) {
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, attachment)
+    } else {
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, attachment, 0)
+    }
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      gl.deleteFramebuffer(framebuffer)
+      throw new Error('The render target framebuffer is incomplete.')
+    }
+
+    return framebuffer
+  }
+
+  private createRenderbuffer(
+    sampleCount: number,
+    width: number,
+    height: number,
+  ): WebGLRenderbuffer {
+    const gl = this._gl
+    const renderbuffer = required(gl.createRenderbuffer(), 'Unable to create a renderbuffer.')
+    gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer)
+    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.RGBA8, width, height)
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null)
+
+    return renderbuffer
   }
 }

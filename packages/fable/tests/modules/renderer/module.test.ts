@@ -15,6 +15,9 @@ import {
   GraphicVertex2D,
   RenderBackend,
   RendererModule,
+  RenderPass,
+  type RenderPassContext,
+  RenderPassPriority,
   RenderSpace,
   RenderSpacePriority,
   RenderTarget,
@@ -65,6 +68,23 @@ class TestBackend extends RenderBackend {
     this.rendered.push([...commands])
     this.contexts.push(context)
     this.targets.push(target)
+  }
+}
+
+class TestPass extends RenderPass {
+  public readonly contexts: RenderPassContext[] = []
+  public readonly commandCounts: number[] = []
+
+  public constructor(identifier: string, priority: RenderPassPriority) {
+    super(identifier, priority)
+  }
+
+  public execute(context: RenderPassContext): void {
+    this.throwIfDestroyed()
+    this.contexts.push(context)
+    this.commandCounts.push(
+      context.backend instanceof TestBackend ? context.backend.rendered.length : -1,
+    )
   }
 }
 
@@ -246,5 +266,43 @@ describe('RendererModule', () => {
 
     game.stop()
     game.destroy()
+  })
+
+  it('executes additional passes in priority order and owns them', () => {
+    const backend = new TestBackend()
+    const before = new TestPass('before', RenderPassPriority.low)
+    const after = new TestPass('after', RenderPassPriority.high)
+    const space = new RenderSpace({ identifier: 'space', camera: new Camera2D() })
+    const renderer = new RendererModule({ backend, spaces: [space], passes: [after, before] })
+    const game = new TestGame([renderer])
+
+    expect(renderer.passes.size).toBe(4)
+    expect(renderer.passes.get('after')).toBe(after)
+
+    game.start()
+    renderer.render(0.25)
+
+    expect(before.contexts[0]?.deltaTime).toBe(0.25)
+    expect(before.contexts[0]?.backend).toBe(backend)
+    expect(before.contexts[0]?.spaces).toEqual([space])
+    expect(before.commandCounts).toEqual([1])
+    expect(after.commandCounts).toEqual([2])
+
+    game.stop()
+    game.destroy()
+    expect(before.destroyed).toBe(true)
+    expect(after.destroyed).toBe(true)
+  })
+
+  it('registers and removes passes', () => {
+    const renderer = new RendererModule({ backend: new TestBackend() })
+    const pass = new TestPass('custom', RenderPassPriority.low)
+
+    renderer.addPass(pass)
+    expect(renderer.passes.get('custom')).toBe(pass)
+    expect(renderer.removePass('custom')).toBe(pass)
+    expect(renderer.removePass('custom')).toBeUndefined()
+
+    renderer.destroy()
   })
 })

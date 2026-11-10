@@ -16,7 +16,7 @@ import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
 import { RenderBackend, type RenderStats } from '../backend.js'
 
-import { applySampler, matrixValues, required } from './helpers/index.js'
+import { applySampler, applyUniform, matrixValues, required } from './helpers/index.js'
 import { createDefaultMaterial } from './shaders/draw2d.js'
 import { GlMeshes, GlPrograms, GlTargets, GlTextures } from './caches.js'
 import { type WebGlBackendHooks } from './hooks.js'
@@ -57,6 +57,8 @@ export class WebGlBackend extends RenderBackend {
   private readonly _onContextLost: (event: Event) => void
   private readonly _onContextRestored: () => void
   private _contextLost: boolean = false
+  private _target: RenderTarget | undefined
+  private _framebuffer: WebGLFramebuffer | null = null
   private _drawCalls: number = 0
   private _batchCount: number = 0
   private _batchVertexArray: WebGLVertexArrayObject | undefined
@@ -146,10 +148,10 @@ export class WebGlBackend extends RenderBackend {
   ): void {
     const gl = this._gl
     const size = target === undefined ? this.backbufferSize : target.size
-    gl.bindFramebuffer(
-      gl.FRAMEBUFFER,
-      target === undefined ? null : this._targets.get(target).framebuffer,
-    )
+    const framebuffer = target === undefined ? null : this._targets.get(target).framebuffer
+    this._target = target
+    this._framebuffer = framebuffer
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
     gl.viewport(0, 0, size.x, size.y)
 
     let batch: Draw2DCommand[] = []
@@ -174,6 +176,8 @@ export class WebGlBackend extends RenderBackend {
       }
       flush()
     } finally {
+      this._target = undefined
+      this._framebuffer = null
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
       gl.bindVertexArray(null)
     }
@@ -311,6 +315,11 @@ export class WebGlBackend extends RenderBackend {
       gl.bindTexture(gl.TEXTURE_2D, this.textureFor(binding))
     }
     gl.uniform1iv(program.textures, [0, 1, 2, 3])
+    for (const [name, value] of material.uniforms) {
+      const location = this._programs.uniformLocation(program, name)
+      if (location === undefined) continue
+      applyUniform(gl, location, value)
+    }
     this.applyBlend(material.blend)
   }
 
@@ -321,6 +330,9 @@ export class WebGlBackend extends RenderBackend {
       this.track(binding.texture, () => {
         this._targets.clear()
       })
+      if (binding.texture !== this._target) {
+        this._targets.resolve(binding.texture, this._framebuffer)
+      }
       applySampler(this._gl, binding.sampler, false)
 
       return target.texture
