@@ -7,8 +7,9 @@ import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Color } from '#/graphics/primitives/color.js'
 import { Viewport } from '#/graphics/primitives/viewport.js'
 import { BlendMode } from '#/graphics/resources/blend-mode.js'
+import { Image } from '#/graphics/resources/image.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
-import { RenderTarget } from '#/graphics/resources/targets/target.js'
+import { RenderTarget, RenderTargetFormat } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 import { ImageTexture } from '#/graphics/resources/textures/image.js'
 import { Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
@@ -63,6 +64,8 @@ export class WebGlBackend extends RenderBackend {
   private _framebuffer: WebGLFramebuffer | null = null
   private _drawCalls: number = 0
   private _batchCount: number = 0
+  private _commandCount: number = 0
+  private _skipFrame: boolean = false
   private _batchVertexArray: WebGLVertexArrayObject | undefined
   private _batchVertexBuffer: WebGLBuffer | undefined
   private _batchIndexBuffer: WebGLBuffer | undefined
@@ -123,8 +126,10 @@ export class WebGlBackend extends RenderBackend {
     return {
       drawCalls: this._drawCalls,
       batches: this._batchCount,
+      commands: this._commandCount,
       textures: this._textures.count,
-      textureBytes: this._textures.bytes,
+      targets: this._targets.count,
+      textureBytes: this._textures.bytes + this._targets.bytes,
     }
   }
 
@@ -156,17 +161,55 @@ export class WebGlBackend extends RenderBackend {
     this._textures.release()
   }
 
-  protected override onBeginFrame(): void {
-    if (this._contextLost) {
-      throw new Error('The WebGL context was lost.')
+  /**
+   * Reads the color contents of a render target or of the window.
+   *
+   * @param target - Target to read, or undefined to read the window.
+   * @returns An image with the pixels ordered from top to bottom.
+   * @throws {@link Error} If the target uses a format that cannot be read.
+   */
+  public readPixels(target?: RenderTarget): Image {
+    this.throwIfDestroyed()
+    if (target?.format === RenderTargetFormat.rgba16f) {
+      throw new Error('Float surfaces cannot be read.')
     }
 
-    this.syncCanvasSize()
+    const gl = this._gl
+    const size = target === undefined ? this.backbufferSize : target.size
+    if (target !== undefined && target.sampleCount > 1) this._targets.resolve(target, null)
+    gl.bindFramebuffer(
+      gl.FRAMEBUFFER,
+      target === undefined ? null : this._targets.get(target).framebuffer,
+    )
+    const data = new Uint8Array(size.x * size.y * 4)
+    gl.readPixels(0, 0, size.x, size.y, gl.RGBA, gl.UNSIGNED_BYTE, data)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
+    const flipped = new Uint8Array(data.length)
+    const row = size.x * 4
+    for (let y = 0; y < size.y; y++) {
+      flipped.set(data.subarray((size.y - 1 - y) * row, (size.y - y) * row), y * row)
+    }
+
+    return new Image(size.x, size.y, flipped)
+  }
+
+  protected override onBeginFrame(): void {
     this._drawCalls = 0
     this._batchCount = 0
+    this._commandCount = 0
+    this._skipFrame = this._contextLost
+    if (this._skipFrame) return
+    this.syncCanvasSize()
   }
 
   protected override onEndFrame(): void {
+    if (this._skipFrame) {
+      this._skipFrame = false
+
+      return
+    }
+
     this._hooks.afterFrame?.()
   }
 
@@ -175,19 +218,32 @@ export class WebGlBackend extends RenderBackend {
     context: DrawContext | undefined,
     target: RenderTarget | undefined,
   ): void {
+    if (this._skipFrame) return
     const gl = this._gl
     const size = target === undefined ? this.backbufferSize : target.size
     const framebuffer = target === undefined ? null : this._targets.get(target).framebuffer
     this._target = target
     this._framebuffer = framebuffer
+    if (target !== undefined) this._targets.get(target).dirty = true
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-    gl.viewport(0, 0, size.x, size.y)
+    const viewport = context?.viewport
+    this.applyViewport(viewport, size)
+    gl.disable(gl.SCISSOR_TEST)
+
+    const viewProjection =
+      context === undefined
+        ? undefined
+        : context.camera.getProjection(context.viewport).multiply(context.camera.view)
 
     let batch: Draw2DCommand[] = []
     const flush = (): void => {
       if (batch.length === 0) return
-      if (context === undefined) throw new Error('Drawing commands require a drawing context.')
-      this.drawBatch(batch, context)
+      if (context === undefined || viewProjection === undefined) {
+        throw new Error('Drawing commands require a drawing context.')
+      }
+
+      this.applyScissor(context.viewport, size)
+      this.drawBatch(batch, context, viewProjection)
       batch = []
     }
 
@@ -208,6 +264,7 @@ export class WebGlBackend extends RenderBackend {
     } finally {
       this._target = undefined
       this._framebuffer = null
+      gl.disable(gl.SCISSOR_TEST)
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
       gl.bindVertexArray(null)
     }
@@ -228,15 +285,42 @@ export class WebGlBackend extends RenderBackend {
 
   private clear(color: Color): void {
     const gl = this._gl
+    gl.disable(gl.SCISSOR_TEST)
     gl.clearColor(color.r, color.g, color.b, color.a)
     gl.clear(gl.COLOR_BUFFER_BIT)
   }
 
-  private draw(command: Draw2DCommand, context: DrawContext): void {
+  private applyViewport(viewport: Viewport | undefined, size: Vector2): void {
     const gl = this._gl
-    const viewProjection = context.camera
-      .getProjection(context.viewport)
-      .multiply(context.camera.view)
+    if (viewport === undefined) {
+      gl.viewport(0, 0, size.x, size.y)
+
+      return
+    }
+
+    gl.viewport(
+      viewport.position.x,
+      size.y - viewport.position.y - viewport.size.y,
+      viewport.size.x,
+      viewport.size.y,
+    )
+  }
+
+  private applyScissor(viewport: Viewport, size: Vector2): void {
+    const gl = this._gl
+    if (!viewport.scissor) {
+      gl.disable(gl.SCISSOR_TEST)
+
+      return
+    }
+
+    const y = size.y - viewport.position.y - viewport.size.y
+    gl.enable(gl.SCISSOR_TEST)
+    gl.scissor(viewport.position.x, y, viewport.size.x, viewport.size.y)
+  }
+
+  private draw(command: Draw2DCommand, context: DrawContext, viewProjection: Matrix4x4): void {
+    const gl = this._gl
     this._hooks.beforeDraw?.(command, context)
     this.applyMaterial(
       command.material,
@@ -248,13 +332,18 @@ export class WebGlBackend extends RenderBackend {
     gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_INT, 0)
     this._drawCalls++
     this._batchCount++
+    this._commandCount++
   }
 
-  private drawBatch(batch: readonly Draw2DCommand[], context: DrawContext): void {
+  private drawBatch(
+    batch: readonly Draw2DCommand[],
+    context: DrawContext,
+    viewProjection: Matrix4x4,
+  ): void {
     const first = batch[0]
     if (first === undefined) return
     if (batch.length === 1) {
-      this.draw(first, context)
+      this.draw(first, context, viewProjection)
 
       return
     }
@@ -310,9 +399,6 @@ export class WebGlBackend extends RenderBackend {
       gl.DYNAMIC_DRAW,
     )
 
-    const viewProjection = context.camera
-      .getProjection(context.viewport)
-      .multiply(context.camera.view)
     this.applyMaterial(
       first.material,
       matrixValues(viewProjection),
@@ -322,6 +408,7 @@ export class WebGlBackend extends RenderBackend {
     gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0)
     this._drawCalls++
     this._batchCount++
+    this._commandCount += batch.length
   }
 
   private applyMaterial(
@@ -332,6 +419,7 @@ export class WebGlBackend extends RenderBackend {
     const gl = this._gl
     this.track(material, () => {
       this._programs.delete(material)
+      for (const binding of material.textures) this._textures.deleteFor(binding.texture)
     })
     const program = this._programs.get(material)
     gl.useProgram(program.program)
@@ -358,7 +446,7 @@ export class WebGlBackend extends RenderBackend {
     if (binding.texture instanceof RenderTarget) {
       const target = this._targets.get(binding.texture)
       this.track(binding.texture, () => {
-        this._targets.clear()
+        this._targets.delete(binding.texture as RenderTarget)
       })
       if (binding.texture !== this._target) {
         this._targets.resolve(binding.texture, this._framebuffer)
@@ -367,17 +455,17 @@ export class WebGlBackend extends RenderBackend {
       const gl = this._gl
       gl.bindTexture(gl.TEXTURE_2D, target.texture)
       applySampler(gl, binding.sampler, binding.texture.mipmaps)
-      if (binding.texture.mipmaps) gl.generateMipmap(gl.TEXTURE_2D)
 
       return target.texture
     }
 
     this.track(binding.texture, () => {
-      this._textures.clear()
+      this._textures.deleteFor(binding.texture)
     })
     if (binding.texture instanceof ImageTexture) {
-      this.track(binding.texture.image, () => {
-        this._textures.clear()
+      const image = binding.texture.image
+      this.track(image, () => {
+        this._textures.deleteForImage(image)
       })
     }
 

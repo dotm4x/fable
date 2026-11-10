@@ -34,6 +34,8 @@ export class FakeWebGl2 {
   public readonly RGBA16F: number = 0x881a
   public readonly HALF_FLOAT: number = 0x140b
   public readonly RENDERBUFFER: number = 0x8d41
+  public readonly SCISSOR_TEST: number = 0x0c11
+  public readonly MAX_SAMPLES: number = 0x8d57
   public readonly READ_FRAMEBUFFER: number = 0x8ca8
   public readonly DRAW_FRAMEBUFFER: number = 0x8ca9
   public readonly SRGB8_ALPHA8: number = 0x8c43
@@ -59,6 +61,8 @@ export class FakeWebGl2 {
   public readonly FRAMEBUFFER: number = 0x8d40
   public readonly COLOR_ATTACHMENT0: number = 0x8ce0
   public readonly FRAMEBUFFER_COMPLETE: number = 0x8cd5
+
+  public colorBufferFloat: boolean = true
 
   public constructor() {
     return new Proxy(this, {
@@ -133,13 +137,40 @@ export class FakeWebGl2 {
   }
 
   public getExtension(name: string): unknown {
-    if (name !== 'EXT_texture_filter_anisotropic') return null
+    if (name === 'EXT_texture_filter_anisotropic') {
+      return { MAX_TEXTURE_MAX_ANISOTROPY_EXT: 0x84ff, TEXTURE_MAX_ANISOTROPY_EXT: 0x84fe }
+    }
 
-    return { MAX_TEXTURE_MAX_ANISOTROPY_EXT: 0x84ff, TEXTURE_MAX_ANISOTROPY_EXT: 0x84fe }
+    if (name === 'EXT_color_buffer_float') {
+      return this.colorBufferFloat ? { colorBufferFloat: true } : null
+    }
+
+    return null
   }
 
-  public getParameter(): number {
-    return 16
+  public getParameter(parameter: number): number {
+    return parameter === 0x8d57 ? 8 : 16
+  }
+
+  public readPixels(
+    _x: number,
+    _y: number,
+    width: number,
+    height: number,
+    _format: number,
+    _type: number,
+    pixels: Uint8Array,
+  ): void {
+    this.calls.push({ name: 'readPixels', args: [_x, _y, width, height, _format, _type] })
+    for (let row = 0; row < height; row++) {
+      for (let column = 0; column < width; column++) {
+        const offset = (row * width + column) * 4
+        pixels[offset] = row
+        pixels[offset + 1] = column
+        pixels[offset + 2] = 0
+        pixels[offset + 3] = 255
+      }
+    }
   }
 }
 

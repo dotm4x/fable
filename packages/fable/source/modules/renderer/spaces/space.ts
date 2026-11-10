@@ -8,8 +8,10 @@ import { Draw2DCommand } from '#/graphics/commands/draw2d.js'
 import { type Camera } from '#/graphics/interfaces/camera.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Drawable } from '#/graphics/interfaces/drawable.js'
+import { type Viewport } from '#/graphics/primitives/viewport.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
+import { type Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 import { Vector4 } from '#/math/primitives/vectors/vector4.js'
 
@@ -37,6 +39,8 @@ export interface RenderSpaceOptions {
   readonly cull?: boolean
   /** Command ordering. Defaults to order. */
   readonly sort?: RenderSortMode
+  /** Initial viewport, or undefined to cover the whole target. */
+  readonly viewport?: Viewport
   /** Initial borrowed drawable entries. */
   readonly entries?: Iterable<Drawable>
 }
@@ -70,6 +74,9 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
   /** Command ordering applied after collection. */
   public readonly sort: RenderSortMode
 
+  /** Borrowed viewport, or undefined to cover the whole target. */
+  public readonly viewport: Store<Viewport | undefined>
+
   /** Borrowed drawable entries. */
   public readonly entries: ReactiveSet<Drawable>
 
@@ -84,6 +91,7 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     target,
     cull = true,
     sort = RenderSortMode.order,
+    viewport,
     entries = [],
   }: RenderSpaceOptions) {
     super()
@@ -97,6 +105,7 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     this.target = new Store(target)
     this.cull = cull
     this.sort = sort
+    this.viewport = new Store(viewport)
     this.entries = new ReactiveSet(entries)
   }
 
@@ -119,8 +128,11 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
       commands.push(...entry.draw(context).commands)
     }
 
+    const viewProjection = context.camera
+      .getProjection(context.viewport)
+      .multiply(context.camera.view)
     const visible = this.cull
-      ? commands.filter((command) => this.isVisible(command, context))
+      ? commands.filter((command) => this.isVisible(command, viewProjection))
       : commands
     const materials = new Map<GraphicMaterial, number>()
     for (const command of visible) {
@@ -154,15 +166,13 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     this.entries.clear()
     if (!this.camera.destroyed) this.camera.destroy()
     if (!this.target.destroyed) this.target.destroy()
+    if (!this.viewport.destroyed) this.viewport.destroy()
     super.onDestroy()
   }
 
-  private isVisible(command: DrawCommand, context: DrawContext): boolean {
+  private isVisible(command: DrawCommand, viewProjection: Matrix4x4): boolean {
     if (!(command instanceof Draw2DCommand)) return true
 
-    const viewProjection = context.camera
-      .getProjection(context.viewport)
-      .multiply(context.camera.view)
     const { min, max } = command.mesh.bounds
     let outsideLeft = true
     let outsideRight = true

@@ -15,6 +15,7 @@ import {
   SpaceRenderPass,
   spaceRenderPassIdentifier,
   Vector2,
+  Viewport,
 } from '../../../../source/index.js'
 
 import { createTestMaterial, RecordingBackend } from './recording-backend.js'
@@ -92,5 +93,27 @@ describe('SpaceRenderPass', () => {
     expect(pass.identifier).toBe(spaceRenderPassIdentifier)
     expect(pass.priority).toBe(RenderPassPriority.normal)
     pass.destroy()
+  })
+
+  it('uses the viewport of the space when defined', () => {
+    const backend = new RecordingBackend()
+    const viewport = new Viewport(new Vector2(4, 8), new Vector2(32, 16), true)
+    const space = new RenderSpace({
+      identifier: 'space',
+      camera: new Camera2D(),
+      viewport,
+    })
+
+    backend.beginFrame()
+    new SpaceRenderPass().execute({
+      backend,
+      deltaTime: 0,
+      clearColor: Color.black,
+      spaces: [space],
+    })
+    backend.endFrame()
+
+    expect(backend.contexts[0]?.viewport).toBe(viewport)
+    space.destroy()
   })
 })

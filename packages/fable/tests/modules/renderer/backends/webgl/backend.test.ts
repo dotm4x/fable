@@ -131,7 +131,14 @@ describe('WebGlBackend', () => {
 
     expect(harness.drawCalls).toHaveLength(1)
     expect(harness.drawCalls[0]?.args[1]).toBe(9)
-    expect(backend.stats).toEqual({ drawCalls: 1, batches: 1, textures: 0, textureBytes: 0 })
+    expect(backend.stats).toEqual({
+      drawCalls: 1,
+      batches: 1,
+      commands: 3,
+      textures: 0,
+      targets: 0,
+      textureBytes: 0,
+    })
     expect(
       harness.gl.callsTo('bufferData').some((call) => call.args[2] === harness.gl.DYNAMIC_DRAW),
     ).toBe(true)
@@ -252,21 +259,26 @@ describe('WebGlBackend', () => {
     backend.destroy()
   })
 
-  it('reports a lost context and recovers when restored', () => {
+  it('skips frames while the context is lost and recovers when restored', () => {
     const { backend, harness } = createBackend()
+    const material = createMaterial()
     const lost = harness.listeners.get('webglcontextlost')
     const restored = harness.listeners.get('webglcontextrestored')
 
     lost?.({ preventDefault: () => undefined } as unknown as Event)
     expect(() => {
       backend.beginFrame()
-    }).toThrow('context was lost')
-
-    restored?.({} as Event)
-    expect(() => {
-      backend.beginFrame()
+      backend.render([createCommand(material)], createContext())
       backend.endFrame()
     }).not.toThrow()
+    expect(harness.drawCalls).toHaveLength(0)
+    expect(backend.stats.drawCalls).toBe(0)
+
+    restored?.({} as Event)
+    backend.beginFrame()
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+    expect(harness.drawCalls).toHaveLength(1)
     backend.destroy()
   })
 
@@ -416,5 +428,100 @@ describe('WebGlBackend', () => {
     for (const sampler of samplers) sampler.destroy()
     for (const texture of textures) texture.destroy()
     for (const image of images) image.destroy()
+  })
+
+  it('resolves a multisampled target once per frame', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(32, 16))
+    const sampler = new TextureSampler()
+    const material = createMaterial([new TextureBinding(target, sampler)])
+
+    backend.beginFrame()
+    backend.render([createCommand(material)], createContext(), target)
+    backend.render([createCommand(material)], createContext())
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('blitFramebuffer')).toHaveLength(1)
+    backend.destroy()
+    sampler.destroy()
+    target.destroy()
+  })
+
+  it('clamps the sample count to the device maximum', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(32, 16), { sampleCount: 16 })
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, target)
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('renderbufferStorageMultisample')[0]?.args[1]).toBe(8)
+    backend.destroy()
+    target.destroy()
+  })
+
+  it('rejects float targets without the color buffer extension', () => {
+    const harness = createGlHarness()
+    harness.gl.colorBufferFloat = false
+    const backend = new WebGlBackend({ canvas: harness.canvas })
+    const target = new RenderTarget(new Vector2(32, 16), {
+      format: RenderTargetFormat.rgba16f,
+    })
+
+    expect(() => {
+      backend.beginFrame()
+      backend.render([new ClearCommand(Color.black)], undefined, target)
+    }).toThrow('EXT_color_buffer_float')
+    backend.endFrame()
+    backend.destroy()
+    target.destroy()
+  })
+
+  it('creates sRGB targets with an sRGB internal format', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(32, 16), {
+      format: RenderTargetFormat.rgba8Srgb,
+    })
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, target)
+    backend.endFrame()
+
+    const texture = harness.gl
+      .callsTo('texImage2D')
+      .find((call) => call.args[2] === harness.gl.SRGB8_ALPHA8)
+    expect(texture).toBeDefined()
+    backend.destroy()
+    target.destroy()
+  })
+
+  it('applies a space viewport with optional scissoring', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    const viewport = new Viewport(new Vector2(10, 5), new Vector2(50, 20), true)
+
+    backend.beginFrame()
+    backend.render([createCommand(material)], new RenderContext(0, new Camera2D(), viewport))
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('viewport')[0]?.args).toEqual([10, 25, 50, 20])
+    expect(harness.gl.callsTo('scissor')[0]?.args).toEqual([10, 25, 50, 20])
+    expect(
+      harness.gl.callsTo('enable').some((call) => call.args[0] === harness.gl.SCISSOR_TEST),
+    ).toBe(true)
+    backend.destroy()
+  })
+
+  it('reads pixels from the window ordered from top to bottom', () => {
+    const { backend } = createBackend()
+    const image = backend.readPixels()
+
+    expect(image.width).toBe(100)
+    expect(image.height).toBe(50)
+    expect(image.data[0]).toBe(49)
+    expect(image.data[100 * 4]).toBe(48)
+    backend.destroy()
+    image.destroy()
   })
 })

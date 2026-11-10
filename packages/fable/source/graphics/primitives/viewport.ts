@@ -12,13 +12,18 @@ export class Viewport {
   /** Size of the viewport in rendering-target units. */
   public readonly size: Vector2
 
+  /** Whether drawing is clipped to the viewport rectangle. */
+  public readonly scissor: boolean
+
   /**
    * @param position - The position of the viewport within its rendering target.
    * @param size - The size of the viewport in rendering-target units.
+   * @param scissor - Whether drawing is clipped to the viewport rectangle.
    */
-  public constructor(position: Vector2, size: Vector2) {
+  public constructor(position: Vector2, size: Vector2, scissor: boolean = false) {
     this.position = position
     this.size = size
+    this.scissor = scissor
   }
 
   /** Aspect ratio, calculated as width divided by height, or zero when the height is zero. */

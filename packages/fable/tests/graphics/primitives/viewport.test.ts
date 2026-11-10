@@ -25,4 +25,12 @@ describe('Viewport', () => {
     expect(viewport.equals(new Viewport(new Vector2(1, 2), new Vector2(3, 5)))).toBe(false)
     expect(viewport.equals(new Viewport(new Vector2(2, 2), new Vector2(3, 4)))).toBe(false)
   })
+
+  it('does not scissor by default and can enable it', () => {
+    const plain = new Viewport(new Vector2(0, 0), new Vector2(10, 10))
+    const scissored = new Viewport(new Vector2(0, 0), new Vector2(10, 10), true)
+
+    expect(plain.scissor).toBe(false)
+    expect(scissored.scissor).toBe(true)
+  })
 })

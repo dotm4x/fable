@@ -14,9 +14,13 @@ export interface RenderStats {
   readonly drawCalls: number
   /** Number of batches or passes issued. */
   readonly batches: number
+  /** Number of draw commands processed. */
+  readonly commands: number
   /** Number of textures currently uploaded. */
   readonly textures: number
-  /** Bytes of texture data currently uploaded. */
+  /** Number of render targets currently allocated. */
+  readonly targets: number
+  /** Bytes of texture and target data currently uploaded. */
   readonly textureBytes: number
 }
 

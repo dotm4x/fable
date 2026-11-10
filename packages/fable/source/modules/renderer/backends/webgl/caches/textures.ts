@@ -1,6 +1,7 @@
-import { RasterImageFormat } from '#/graphics/resources/image.js'
+import { type Image, RasterImageFormat } from '#/graphics/resources/image.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 import { ImageTexture } from '#/graphics/resources/textures/image.js'
+import { type Texture } from '#/graphics/resources/textures/texture.js'
 
 import { applySampler, required } from '../helpers/index.js'
 
@@ -123,6 +124,26 @@ export class GlTextures {
     this.trim()
 
     return texture
+  }
+
+  /** Deletes the cached texture of one texture resource. */
+  public deleteFor(texture: Texture): void {
+    for (const [binding, entry] of this._textures) {
+      if (binding.texture !== texture) continue
+      this._textures.delete(binding)
+      this._gl.deleteTexture(entry.texture)
+      this._bytes -= entry.bytes
+    }
+  }
+
+  /** Deletes the cached textures uploaded from an image. */
+  public deleteForImage(image: Image): void {
+    for (const [binding, entry] of this._textures) {
+      if (!(binding.texture instanceof ImageTexture) || binding.texture.image !== image) continue
+      this._textures.delete(binding)
+      this._gl.deleteTexture(entry.texture)
+      this._bytes -= entry.bytes
+    }
   }
 
   /** Releases every cached texture, keeping the white fallback. */

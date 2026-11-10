@@ -6,6 +6,8 @@ import { Texture } from '../textures/texture.js'
 export enum RenderTargetFormat {
   /** Four 8-bit normalized channels. */
   rgba8 = 'rgba8',
+  /** Four 8-bit sRGB channels, encoded when written and decoded when sampled. */
+  rgba8Srgb = 'rgba8-srgb',
   /** Four 16-bit floating point channels, suitable for HDR rendering. */
   rgba16f = 'rgba16f',
 }

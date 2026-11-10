@@ -43,7 +43,7 @@ export class RecordingBackend extends RenderBackend {
   }
 
   public get stats(): RenderStats {
-    return { drawCalls: 0, batches: 0, textures: 0, textureBytes: 0 }
+    return { drawCalls: 0, batches: 0, commands: 0, textures: 0, targets: 0, textureBytes: 0 }
   }
 
   public get viewport(): Viewport {
