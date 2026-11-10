@@ -25,7 +25,7 @@ export class MyRendererModule extends RendererModule {
       spaces: [
         new NodeRenderSpace({
           identifier: 'scene',
-          camera: scenes.main.camera,
+          camera: scenes.camera,
           priority: RenderSpacePriority.low,
           target,
           scenes,

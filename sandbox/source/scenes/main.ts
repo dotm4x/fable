@@ -1,6 +1,4 @@
-import { Camera2D, type GraphicMaterial, Node2D, SpriteNode, Vector2 } from '@dotm4x/fable'
-
-import { MyInputModule } from '../input/module.js'
+import { type Camera2D, type GraphicMaterial, Node2D, SpriteNode, Vector2 } from '@dotm4x/fable'
 
 import { TriangleNode } from './triangle.js'
 
@@ -8,8 +6,7 @@ export class MainScene extends Node2D {
   public readonly camera: Camera2D
   public readonly triangle: TriangleNode
 
-  public constructor(material: GraphicMaterial) {
-    const camera = new Camera2D({ name: 'camera' })
+  public constructor(material: GraphicMaterial, camera: Camera2D) {
     const triangle = new TriangleNode(material)
     const left = new TriangleNode(material, 'triangle-left', new Vector2(-160, 0))
     const right = new TriangleNode(material, 'triangle-right', new Vector2(160, 0))
@@ -43,21 +40,11 @@ export class MainScene extends Node2D {
         region: { min: new Vector2(0.5, 0.5), max: new Vector2(1, 1) },
       }),
     ]
-    super({ name: 'main', children: [camera, triangle, left, right, ...sprites] })
+    super({ name: 'main', children: [triangle, left, right, ...sprites] })
     this.camera = camera
     this.triangle = triangle
     left.scale.value = new Vector2(0.5, 0.5)
     right.scale.value = new Vector2(0.5, 0.5)
     camera.position.value = new Vector2(0, 0)
-  }
-
-  protected override configure(): void {
-    this.require(MyInputModule).keyboard.space.connect(() => {
-      console.log('hola')
-    })
-  }
-
-  protected override onLoad(): void {
-    console.log('scene start')
   }
 }

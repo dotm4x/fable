@@ -23,8 +23,8 @@ export class Sandbox extends Game implements Updatable {
 
   public constructor(backend: RenderBackend, material: GraphicMaterial, assets: AssetsModule) {
     super()
-    this.time = new MyTimeModule(this)
-    this.scenes = new MyScenesModule(material)
+    this.scenes = new MyScenesModule(material, backend.defaultMaterial)
+    this.time = new MyTimeModule(this, this.scenes)
     this.input = new MyInputModule({ target: document.body })
     this.renderer = new MyRendererModule(backend, this.scenes)
     this.assets = assets
