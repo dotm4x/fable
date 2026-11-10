@@ -46,6 +46,7 @@ export abstract class Destroyable implements DestroyableLifecycle {
     if (this.destroyed) {
       throw new Error(`${this.constructor.name} has already been destroyed.`)
     }
+
     if (this._destroyInProgress) {
       throw new Error(`${this.constructor.name} is already being destroyed.`)
     }

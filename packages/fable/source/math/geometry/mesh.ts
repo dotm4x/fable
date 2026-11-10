@@ -32,10 +32,12 @@ export abstract class Mesh<TVertex> {
     if (indexList.length === 0 || indexList.length % 3 !== 0) {
       throw new Error('A mesh must contain at least one complete triangle.')
     }
+
     for (const [position, index] of indexList.entries()) {
       if (!Number.isInteger(index)) {
         throw new Error(`Index ${String(position)} must be an integer.`)
       }
+
       if (index < 0 || index >= vertexList.length) {
         throw new Error(`Index ${String(position)} refers to a vertex outside the mesh.`)
       }

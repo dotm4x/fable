@@ -283,6 +283,7 @@ describe('AssetsModule', () => {
             resolve = resolveHook
           })
     }
+
     const assets = new AssetsModule({ importers: [importer] })
     const asset = await assets.load<string>('a.test')
 
@@ -307,6 +308,7 @@ describe('AssetsModule', () => {
             resolve = resolveHook
           })
     }
+
     const assets = new AssetsModule({ importers: [importer] })
     const asset = await assets.load<string>('a.test')
 

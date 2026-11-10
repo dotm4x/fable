@@ -24,13 +24,9 @@ export class InputModule extends Module {
   private readonly _preparation: Once = new Once(
     'Input module preparation failed or is in progress.',
   )
+
   /** Borrowed input element. */
   public readonly target: HTMLElement
-  /** Devices indexed by stable identifier; the module retains ownership. */
-  public get devices(): ReadonlyMap<string, InputDevice> {
-    return new Map(this._devices)
-  }
-
   public constructor({ target, devices = [] }: InputModuleOptions) {
     super({ identifier: 'org.js.fable.InputModule' })
     const initial = [...devices]
@@ -38,13 +34,20 @@ export class InputModule extends Module {
     if (new Set(identifiers).size !== identifiers.length) {
       throw new Error('Duplicate input device identifier.')
     }
+
     if (initial.some((device) => device.destroyed || device.active)) {
       throw new Error('Input devices must be alive and inactive.')
     }
+
     this.target = target
     for (const device of initial) {
       this._devices.set(device.identifier, device)
     }
+  }
+
+  /** Devices indexed by stable identifier; the module retains ownership. */
+  public get devices(): ReadonlyMap<string, InputDevice> {
+    return new Map(this._devices)
   }
 
   /** Yields devices whose ownership transfers to the module. */
@@ -64,6 +67,7 @@ export class InputModule extends Module {
           if (this._devices.has(device.identifier)) {
             throw new Error(`Duplicate input device identifier '${device.identifier}'.`)
           }
+
           if (device.destroyed || device.active) throw new Error('Input device is not available.')
           this._devices.set(device.identifier, device)
         } catch (error) {
@@ -80,9 +84,11 @@ export class InputModule extends Module {
               })
             }
           }
+
           throw error
         }
       }
+
       this.configure()
     })
     for (const device of this._devices.values()) device.start(this.target)
@@ -98,10 +104,12 @@ export class InputModule extends Module {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+
     for (const [identifier, device] of this._devices) {
       if (!device.destroyed) device.destroy()
       this._devices.delete(identifier)
     }
+
     super.onDestroy()
   }
 }

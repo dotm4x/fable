@@ -64,6 +64,7 @@ export class Shader extends Resource {
     if (!code.trim()) {
       throw new Error('Shader source code must not be empty.')
     }
+
     if (!entryPoint.trim()) {
       throw new Error('Shader entry point must not be empty.')
     }

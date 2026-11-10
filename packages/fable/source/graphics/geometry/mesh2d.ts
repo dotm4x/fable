@@ -39,6 +39,7 @@ function validateVertices(vertices: Iterable<GraphicVertex2D>): GraphicVertex2D[
     ) {
       throw new Error(`Vertex ${String(position)} contains nonfinite values.`)
     }
+
     validated.push(vertex)
     position++
   }

@@ -18,6 +18,12 @@ export class AudioImporter extends AssetImporter<AudioBuffer> {
     super({ identifier: 'audio', extensions: ['mp3', 'wav', 'ogg'] })
   }
 
+  private get context(): AudioContext {
+    this._context ??= new AudioContext()
+
+    return this._context
+  }
+
   /** @inheritDoc */
   public override async load(
     source: string,
@@ -39,11 +45,5 @@ export class AudioImporter extends AssetImporter<AudioBuffer> {
     if (context !== undefined) {
       context.close().catch(() => undefined)
     }
-  }
-
-  private get context(): AudioContext {
-    this._context ??= new AudioContext()
-
-    return this._context
   }
 }

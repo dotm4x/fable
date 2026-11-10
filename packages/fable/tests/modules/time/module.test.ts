@@ -24,6 +24,7 @@ function animationFrames(): {
       if (callback === undefined) {
         throw new Error('No animation frame is pending.')
       }
+
       callbacks.clear()
       callback(time)
     },
@@ -160,6 +161,7 @@ describe('TimeModule', () => {
       expect(error).toBeInstanceOf(Error)
       expect(error).toMatchObject({ message: "Update channel 'broken' failed.", cause: failure })
     }
+
     expect(scheduler.looping).toBe(false)
     expect(frames.pending()).toBe(0)
     game.stop()

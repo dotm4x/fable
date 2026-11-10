@@ -3,8 +3,8 @@ import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
 import { Module, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
 
-import { type LogOutput } from './outputs/output.js'
 import { type LogMessage, LogMessageKind, type LogOptions } from './message.js'
+import { type LogOutput } from './outputs/output.js'
 import { SourcedLogger } from './sourced-logger.js'
 
 /** Configuration for a logger. */
@@ -23,6 +23,7 @@ export class LoggerModule extends Module {
   private readonly _preparation: Once = new Once(
     'Logger module preparation has already failed or is in progress.',
   )
+
   private readonly _onLog: Signal<LogMessage> = new Signal<LogMessage>()
 
   /** Outputs owned by this logger. */
@@ -34,38 +35,6 @@ export class LoggerModule extends Module {
   public constructor({ outputs = [] }: LoggerModuleOptions = {}) {
     super({ identifier: 'org.js.fable.LoggerModule' })
     this.outputs = new ReactiveSet(outputs)
-  }
-
-  /** Yields outputs whose ownership transfers to this logger. */
-  protected *compose(): Generator<LogOutput, void, unknown> {
-    // Override to yield outputs.
-  }
-
-  /** Configures the logger once after composition. */
-  protected configure(): void {
-    // Override to configure the logger.
-  }
-
-  protected override onStart(): void {
-    this._preparation.execute(() => {
-      for (const output of this.compose()) {
-        try {
-          this.outputs.add(output)
-        } catch (error) {
-          if (!this.outputs.has(output) && !output.destroyed) {
-            try {
-              output.destroy()
-            } catch (failure) {
-              throw new AggregateError([error, failure], 'Composed output cleanup failed.', {
-                cause: failure,
-              })
-            }
-          }
-          throw error
-        }
-      }
-      this.configure()
-    })
   }
 
   /**
@@ -112,22 +81,60 @@ export class LoggerModule extends Module {
     for (const output of outputs) {
       output.log(message)
     }
+
     this._onLog.fire(message)
+  }
+
+  /** Yields outputs whose ownership transfers to this logger. */
+  protected *compose(): Generator<LogOutput, void, unknown> {
+    // Override to yield outputs.
+  }
+
+  /** Configures the logger once after composition. */
+  protected configure(): void {
+    // Override to configure the logger.
+  }
+
+  protected override onStart(): void {
+    this._preparation.execute(() => {
+      for (const output of this.compose()) {
+        try {
+          this.outputs.add(output)
+        } catch (error) {
+          if (!this.outputs.has(output) && !output.destroyed) {
+            try {
+              output.destroy()
+            } catch (failure) {
+              throw new AggregateError([error, failure], 'Composed output cleanup failed.', {
+                cause: failure,
+              })
+            }
+          }
+
+          throw error
+        }
+      }
+
+      this.configure()
+    })
   }
 
   protected override onDestroy(): void {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+
     for (const output of this.outputs) {
       if (!output.destroyed) {
         output.destroy()
       }
     }
+
     this.outputs.clear()
     if (!this._onLog.destroyed) {
       this._onLog.destroy()
     }
+
     super.onDestroy()
   }
 }

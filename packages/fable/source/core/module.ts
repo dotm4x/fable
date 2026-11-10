@@ -52,6 +52,7 @@ export function moduleLifecycle(module: Module): ModuleLifecycle {
   if (lifecycle === undefined) {
     throw new Error('Module lifecycle is unavailable.')
   }
+
   return lifecycle
 }
 
@@ -86,6 +87,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (new Set(declarations.map((dependency) => dependency.type)).size !== declarations.length) {
       throw new Error(`Module '${identifier}' declares a dependency more than once.`)
     }
+
     this.dependencies = Object.freeze(declarations)
     lifecycles.set(this, {
       inject: (modules) => {
@@ -112,10 +114,12 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (this._dependencies === undefined) {
       throw new Error(`Module '${this.identifier}' has not been injected.`)
     }
+
     const dependency = this._dependencies.get(type)
     if (!(dependency instanceof type)) {
       throw new Error(`Module '${this.identifier}' requires uninjected dependency '${type.name}'.`)
     }
+
     return dependency
   }
 
@@ -129,16 +133,19 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (this._dependencies === undefined) {
       throw new Error(`Module '${this.identifier}' has not been injected.`)
     }
+
     if (!this.dependencies.some((dependency) => dependency.type === type && dependency.optional)) {
       throw new Error(
         `Module '${this.identifier}' has not declared optional dependency '${type.name}'.`,
       )
     }
+
     const dependency = this._dependencies.get(type)
     if (dependency === undefined) return undefined
     if (!(dependency instanceof type)) {
       throw new Error(`Module '${this.identifier}' has invalid dependency '${type.name}'.`)
     }
+
     return dependency
   }
 
@@ -157,6 +164,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
       if (this._state.value !== ModuleState.idle) {
         throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
       }
+
       this._state.destroy()
     }
   }
@@ -166,6 +174,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (this._dependencies !== undefined) {
       throw new Error(`Module '${this.identifier}' has already been injected.`)
     }
+
     const dependencies = new Map<ModuleType, Module>()
     for (const { type, optional } of this.dependencies) {
       const dependency = modules.get(type)
@@ -173,8 +182,10 @@ export abstract class Module extends Destroyable implements Identifiable<string>
       if (!(dependency instanceof type)) {
         throw new Error(`Module '${this.identifier}' requires missing dependency '${type.name}'.`)
       }
+
       dependencies.set(type, dependency)
     }
+
     this._dependencies = dependencies
   }
 
@@ -183,6 +194,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (this._dependencies === undefined) {
       throw new Error(`Module '${this.identifier}' has not been injected.`)
     }
+
     if (this._state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot start from state '${this._state.value}'.`)
     }
@@ -199,6 +211,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
       if (started) {
         throw error
       }
+
       const failures: unknown[] = []
       let cleanupFailed = false
       if (entered) {
@@ -207,6 +220,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
         } catch (failure) {
           failures.push(failure)
         }
+
         try {
           this.onStop()
         } catch (failure) {
@@ -214,16 +228,19 @@ export abstract class Module extends Destroyable implements Identifiable<string>
           failures.push(failure)
         }
       }
+
       try {
         this._state.value = cleanupFailed ? ModuleState.running : ModuleState.idle
       } catch (failure) {
         failures.push(failure)
       }
+
       if (failures.length > 0) {
         throw new AggregateError([error, ...failures], 'Module startup and recovery failed.', {
           cause: error,
         })
       }
+
       throw error
     }
   }
@@ -233,6 +250,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
     if (this._dependencies === undefined || this._state.value !== ModuleState.running) {
       throw new Error(`Module '${this.identifier}' cannot stop from state '${this._state.value}'.`)
     }
+
     let stopped = false
     try {
       this._state.value = ModuleState.stopping
@@ -251,6 +269,7 @@ export abstract class Module extends Destroyable implements Identifiable<string>
           },
         )
       }
+
       throw error
     }
   }

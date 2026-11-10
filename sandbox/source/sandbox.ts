@@ -30,14 +30,6 @@ export class Sandbox extends Game implements Updatable {
     this.assets = assets
   }
 
-  protected override *compose(): Generator<Module> {
-    yield this.time
-    yield this.scenes
-    yield this.input
-    yield this.renderer
-    yield this.assets
-  }
-
   public update(context: UpdateContext): void {
     this.renderer.update(context)
     this.frames++
@@ -47,5 +39,13 @@ export class Sandbox extends Game implements Updatable {
     if (delta !== null) delta.textContent = context.deltaTime.toFixed(3)
     const draws = document.querySelector('#draws')
     if (draws !== null) draws.textContent = String(this.renderer.backend.stats.drawCalls)
+  }
+
+  protected override *compose(): Generator<Module> {
+    yield this.time
+    yield this.scenes
+    yield this.input
+    yield this.renderer
+    yield this.assets
   }
 }

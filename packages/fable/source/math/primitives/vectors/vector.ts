@@ -119,34 +119,19 @@ export abstract class BaseVector<TVector extends Vector<TVector>> implements Vec
   /** The components in coordinate order. */
   protected abstract get components(): readonly number[]
 
-  /**
-   * Creates a vector of the concrete type from coordinate-ordered components.
-   *
-   * @param components - The components for the new vector.
-   * @returns A new vector of the concrete type.
-   */
-  protected abstract create(components: readonly number[]): TVector
-
-  /**
-   * Reads a component from an array and reports a dimension mismatch.
-   *
-   * @param components - The vector components.
-   * @param index - The component index to read.
-   * @returns The component at the requested index.
-   * @throws {@link RangeError} If the component is missing.
-   */
-  protected componentAt(components: readonly number[], index: number): number {
-    const component = components[index]
-    if (component === undefined) {
-      throw new RangeError(`Missing vector component at index ${String(index)}.`)
-    }
-
-    return component
-  }
-
   /** @inheritDoc */
   public get dimension(): number {
     return this.components.length
+  }
+
+  /** @inheritDoc */
+  public get magnitude(): number {
+    return Math.sqrt(this.squaredMagnitude)
+  }
+
+  /** @inheritDoc */
+  public get squaredMagnitude(): number {
+    return this.components.reduce((sum, component) => sum + component * component, 0)
   }
 
   /** @inheritDoc */
@@ -180,16 +165,6 @@ export abstract class BaseVector<TVector extends Vector<TVector>> implements Vec
       (sum, product) => sum + product,
       0,
     )
-  }
-
-  /** @inheritDoc */
-  public get magnitude(): number {
-    return Math.sqrt(this.squaredMagnitude)
-  }
-
-  /** @inheritDoc */
-  public get squaredMagnitude(): number {
-    return this.components.reduce((sum, component) => sum + component * component, 0)
   }
 
   /** @inheritDoc */
@@ -228,6 +203,31 @@ export abstract class BaseVector<TVector extends Vector<TVector>> implements Vec
   /** @inheritDoc */
   public toArray(): readonly number[] {
     return [...this.components]
+  }
+
+  /**
+   * Creates a vector of the concrete type from coordinate-ordered components.
+   *
+   * @param components - The components for the new vector.
+   * @returns A new vector of the concrete type.
+   */
+  protected abstract create(components: readonly number[]): TVector
+
+  /**
+   * Reads a component from an array and reports a dimension mismatch.
+   *
+   * @param components - The vector components.
+   * @param index - The component index to read.
+   * @returns The component at the requested index.
+   * @throws {@link RangeError} If the component is missing.
+   */
+  protected componentAt(components: readonly number[], index: number): number {
+    const component = components[index]
+    if (component === undefined) {
+      throw new RangeError(`Missing vector component at index ${String(index)}.`)
+    }
+
+    return component
   }
 
   private combine(other: TVector, operation: (left: number, right: number) => number): TVector {

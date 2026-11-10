@@ -1,8 +1,8 @@
 import { fetchSource } from '#/modules/assets/helpers/fetch.js'
 import { AssetImporter, type ImportedAsset } from '#/modules/assets/importer.js'
 
-import { ShaderLanguage } from '../resources/shader.js'
 import { ShaderSource } from '../resources/shader-source.js'
+import { ShaderLanguage } from '../resources/shader.js'
 
 const languageByExtension: ReadonlyMap<string, ShaderLanguage> = new Map([
   ['.wgsl', ShaderLanguage.wgsl],

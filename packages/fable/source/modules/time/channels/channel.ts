@@ -36,6 +36,7 @@ export class Channel extends Destroyable implements Identifiable<string> {
   private readonly _preparation: Once = new Once(
     'Channel preparation has already failed or is in progress.',
   )
+
   private _elapsed: number = 0
   private _phase: number = 0
   private _deltaTime: number = 0
@@ -66,6 +67,7 @@ export class Channel extends Destroyable implements Identifiable<string> {
     if (!Number.isFinite(targetUpdateRate) || !Number.isFinite(priority)) {
       throw new RangeError('Channel target rate and priority must be finite.')
     }
+
     this.identifier = identifier
     this.targetUpdateRate = targetUpdateRate
     this.priority = priority
@@ -82,23 +84,6 @@ export class Channel extends Destroyable implements Identifiable<string> {
     return this._deltaTime > 0 ? 1 / this._deltaTime : 0
   }
 
-  /** Yields borrowed entries to register once before configuration. */
-  protected *compose(): Generator<Updatable, void, unknown> {
-    // Override to yield entries.
-  }
-
-  /** Configures the channel once after all composed entries are registered. */
-  protected configure(): void {
-    // Override to configure the channel.
-  }
-
-  /** Called after the entries have been updated. */
-  protected onUpdate(context: UpdateContext): void {
-    if (!Number.isFinite(context.deltaTime)) {
-      throw new RangeError('Channel update delta must be finite.')
-    }
-  }
-
   /**
    * Prepares the channel once. Failed preparation cannot be retried.
    *
@@ -112,9 +97,11 @@ export class Channel extends Destroyable implements Identifiable<string> {
       if (unique.size !== entries.length || entries.some((entry) => this.entries.has(entry))) {
         throw new Error('Duplicate composed object found.')
       }
+
       for (const entry of entries) {
         this.entries.add(entry)
       }
+
       this.configure()
     })
   }
@@ -139,6 +126,7 @@ export class Channel extends Destroyable implements Identifiable<string> {
         'Channel timing values must be finite and delta time must be non-negative.',
       )
     }
+
     this.prepare()
     const channelRate = this.targetUpdateRate > 0 ? this.targetUpdateRate : 0
     const moduleRate = moduleTargetUpdateRate > 0 ? moduleTargetUpdateRate : 0
@@ -154,15 +142,35 @@ export class Channel extends Destroyable implements Identifiable<string> {
       if (this._phase < interval) {
         return
       }
+
       this._phase %= interval
     }
+
     const context: UpdateContext = { deltaTime: this._elapsed, updateRate: rate }
     this._elapsed = 0
     this._deltaTime = context.deltaTime
     for (const entry of [...this.entries]) {
       entry.update(context)
     }
+
     this.onUpdate(context)
+  }
+
+  /** Yields borrowed entries to register once before configuration. */
+  protected *compose(): Generator<Updatable, void, unknown> {
+    // Override to yield entries.
+  }
+
+  /** Configures the channel once after all composed entries are registered. */
+  protected configure(): void {
+    // Override to configure the channel.
+  }
+
+  /** Called after the entries have been updated. */
+  protected onUpdate(context: UpdateContext): void {
+    if (!Number.isFinite(context.deltaTime)) {
+      throw new RangeError('Channel update delta must be finite.')
+    }
   }
 
   protected override onDestroy(): void {

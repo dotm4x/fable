@@ -12,6 +12,7 @@ class TestModule extends Module {
   public dependency<TModule extends Module>(type: ModuleType<TModule>): TModule {
     return this.require(type)
   }
+
   public optionalDependency<TModule extends Module>(
     type: ModuleType<TModule>,
   ): TModule | undefined {

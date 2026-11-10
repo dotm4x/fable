@@ -50,6 +50,7 @@ export class Image extends Resource {
     if (!Number.isInteger(width) || width <= 0) {
       throw new RangeError('Image width must be a positive integer.')
     }
+
     if (!Number.isInteger(height) || height <= 0) {
       throw new RangeError('Image height must be a positive integer.')
     }

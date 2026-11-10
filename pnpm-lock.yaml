@@ -196,9 +196,6 @@ importers:
       eslint-plugin-perfectionist:
         specifier: 5.13.0
         version: 5.13.0(eslint@10.14.0(jiti@2.7.0))(typescript@6.0.3)
-      eslint-plugin-simple-import-sort:
-        specifier: ^14.0.0
-        version: 14.0.0(eslint@10.14.0(jiti@2.7.0))
       globals:
         specifier: ^17.14.0
         version: 17.14.0
@@ -972,11 +969,6 @@ packages:
     peerDependenciesMeta:
       eslint:
         optional: true
-
-  eslint-plugin-simple-import-sort@14.0.0:
-    resolution: {integrity: sha512-NUJO0+XFCkk+o5EsAJruTgnfMEpeWrPWeJS15UVF60GgXmqz1BJ9/3hzlvG7lkL8Bubzos5cCLptThbFfPnSMQ==}
-    peerDependencies:
-      eslint: '>=5.0.0'
 
   eslint-scope@9.1.2:
     resolution: {integrity: sha512-xS90H51cKw0jltxmvmHy2Iai1LIqrfbw57b79w/J7MfvDfkIkFZ+kj6zC3BjtUwh150HsSSdxXZcsuv72miDFQ==}
@@ -2349,10 +2341,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
-
-  eslint-plugin-simple-import-sort@14.0.0(eslint@10.14.0(jiti@2.7.0)):
-    dependencies:
-      eslint: 10.14.0(jiti@2.7.0)
 
   eslint-scope@9.1.2:
     dependencies:

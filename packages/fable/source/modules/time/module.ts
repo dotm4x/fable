@@ -24,6 +24,7 @@ export class TimeModule extends Module {
   private readonly _preparation: Once = new Once(
     'Time module preparation has already failed or is in progress.',
   )
+
   private _frame: number | undefined
   private _looping: boolean = false
   private _generation: number = 0
@@ -63,6 +64,7 @@ export class TimeModule extends Module {
         'Time module target rate must be finite and maximum delta time must be finite and positive.',
       )
     }
+
     this.targetUpdateRate = targetUpdateRate
     this.maximumDeltaTime = maximumDeltaTime
     this.channels = new IdentifiableSet(channels)
@@ -76,6 +78,41 @@ export class TimeModule extends Module {
   /** Whether the animation-frame loop is active. */
   public get looping(): boolean {
     return this._looping
+  }
+
+  /**
+   * Starts the non-blocking animation-frame loop.
+   *
+   * A callback failure stops the loop and propagates an error identifying the
+   * channel to the browser. The game remains running and can be stopped by its
+   * owner. Frame delivery is limited by the browser and may pause in background tabs.
+   *
+   * @throws {@link Error} If the time module is not running, the loop is already active,
+   * or animation frames are unavailable.
+   */
+  public run(): void {
+    this.throwIfDestroyed()
+    if (this.state.value !== ModuleState.running || this._looping) {
+      throw new Error('Time module must be running and its loop must not already be active.')
+    }
+
+    if (typeof requestAnimationFrame !== 'function' || typeof cancelAnimationFrame !== 'function') {
+      throw new Error('Animation frames are not available in this environment.')
+    }
+
+    this._previousTime = undefined
+    this._elapsed = 0
+    this._phase = 0
+    this._looping = true
+    const generation = ++this._generation
+    try {
+      this._frame = requestAnimationFrame((time) => {
+        this.tick(time, generation)
+      })
+    } catch (error) {
+      this.stopLoop()
+      throw error
+    }
   }
 
   /** Yields channels whose ownership transfers to this time module. */
@@ -103,10 +140,13 @@ export class TimeModule extends Module {
               })
             }
           }
+
           throw error
         }
+
         this.channels.add(channel)
       }
+
       this.configure()
     })
     for (const channel of this.channels) {
@@ -122,46 +162,15 @@ export class TimeModule extends Module {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+
     for (const channel of this.channels) {
       if (!channel.destroyed) {
         channel.destroy()
       }
     }
+
     this.channels.clear()
     super.onDestroy()
-  }
-
-  /**
-   * Starts the non-blocking animation-frame loop.
-   *
-   * A callback failure stops the loop and propagates an error identifying the
-   * channel to the browser. The game remains running and can be stopped by its
-   * owner. Frame delivery is limited by the browser and may pause in background tabs.
-   *
-   * @throws {@link Error} If the time module is not running, the loop is already active,
-   * or animation frames are unavailable.
-   */
-  public run(): void {
-    this.throwIfDestroyed()
-    if (this.state.value !== ModuleState.running || this._looping) {
-      throw new Error('Time module must be running and its loop must not already be active.')
-    }
-    if (typeof requestAnimationFrame !== 'function' || typeof cancelAnimationFrame !== 'function') {
-      throw new Error('Animation frames are not available in this environment.')
-    }
-    this._previousTime = undefined
-    this._elapsed = 0
-    this._phase = 0
-    this._looping = true
-    const generation = ++this._generation
-    try {
-      this._frame = requestAnimationFrame((time) => {
-        this.tick(time, generation)
-      })
-    } catch (error) {
-      this.stopLoop()
-      throw error
-    }
   }
 
   private stopLoop(): void {
@@ -171,6 +180,7 @@ export class TimeModule extends Module {
       cancelAnimationFrame(this._frame)
       this._frame = undefined
     }
+
     this._previousTime = undefined
     this._elapsed = 0
     this._phase = 0
@@ -184,6 +194,7 @@ export class TimeModule extends Module {
     if (!this.loopActive(generation)) {
       return
     }
+
     this._frame = undefined
     try {
       if (this._previousTime !== undefined) {
@@ -200,9 +211,11 @@ export class TimeModule extends Module {
             if (!this.loopActive(generation)) {
               break
             }
+
             if (this.channels.get(channel.identifier) !== channel) {
               continue
             }
+
             try {
               channel.update(this._deltaTime, this.targetUpdateRate)
             } catch (error) {
@@ -211,6 +224,7 @@ export class TimeModule extends Module {
           }
         }
       }
+
       if (this.loopActive(generation)) {
         this._previousTime = time
         this._frame = requestAnimationFrame((nextTime) => {
@@ -221,6 +235,7 @@ export class TimeModule extends Module {
       if (generation === this._generation) {
         this.stopLoop()
       }
+
       throw error
     }
   }

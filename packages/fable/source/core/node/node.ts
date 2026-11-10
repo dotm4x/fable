@@ -55,6 +55,7 @@ export class Node extends Destroyable {
   private readonly _preparation: Once = new Once(
     'Node preparation has already failed or is in progress.',
   )
+
   private readonly _children: Set<Node> = new Set<Node>()
   private _parent: Node | undefined
   private _owner: object | undefined
@@ -122,9 +123,11 @@ export class Node extends Destroyable {
     if (new Set(initial).size !== initial.length) {
       throw new Error('Duplicate child node.')
     }
+
     for (const child of initial) {
       this.validateChild(child)
     }
+
     for (const child of initial) {
       this._children.add(child)
       child._parent = this
@@ -135,10 +138,12 @@ export class Node extends Destroyable {
   public get parent(): Node | undefined {
     return this._parent
   }
+
   /** Whether this node is loaded. */
   public get loaded(): boolean {
     return this._loaded
   }
+
   /** Slash-separated path formed from ancestor names. */
   public get path(): string {
     const names: string[] = [this.name.value]
@@ -147,6 +152,7 @@ export class Node extends Destroyable {
       names.push(node.name.value)
       node = node._parent
     }
+
     return names.reverse().join('/')
   }
 
@@ -178,8 +184,10 @@ export class Node extends Destroyable {
           )
         }
       }
+
       throw error
     }
+
     nodeSetLifecycle(this.children).added(child)
   }
 
@@ -233,6 +241,85 @@ export class Node extends Destroyable {
       }, this)
   }
 
+  /** Loads this node and its children; failed loads roll back newly loaded children. */
+  public load(): void {
+    this.throwIfDestroyed()
+    if (
+      this._loaded ||
+      this._transitioning ||
+      this._destroying ||
+      (this._parent !== undefined && !this._parent.loaded)
+    ) {
+      throw new Error('Node cannot be loaded in its current state.')
+    }
+
+    this._transitioning = true
+    try {
+      this._preparation.execute(() => {
+        for (const child of this.compose()) {
+          try {
+            this.add(child)
+          } catch (error) {
+            if (
+              child._parent === undefined &&
+              child._owner === undefined &&
+              !child.destroyed &&
+              !child.loaded
+            ) {
+              try {
+                child.destroy()
+              } catch (failure) {
+                throw new AggregateError([error, failure], 'Node composition and cleanup failed.', {
+                  cause: failure,
+                })
+              }
+            }
+
+            throw error
+          }
+        }
+
+        this.configure()
+      })
+      const preserved = new Set([...this._children].filter((child) => child.loaded))
+      this._loaded = true
+      let initialized = false
+      try {
+        this.onLoad()
+        initialized = true
+        for (const child of [...this._children]) {
+          if (!child.loaded) child.load()
+        }
+      } catch (error) {
+        this._rollback = { preserved, initialized }
+        try {
+          this.unloadChildrenAndSelf()
+        } catch (failure) {
+          throw new AggregateError([error, failure], 'Node loading and rollback failed.', {
+            cause: failure,
+          })
+        }
+
+        throw error
+      }
+    } finally {
+      this._transitioning = false
+    }
+  }
+
+  /** Unloads non-persistent children and then this node. */
+  public unload(): void {
+    this.throwIfDestroyed()
+    if (!this._loaded || this._transitioning)
+      throw new Error('Node cannot be unloaded in its current state.')
+    this._transitioning = true
+    try {
+      this.unloadChildrenAndSelf()
+    } finally {
+      this._transitioning = false
+    }
+  }
+
   /** Yields additional owned children once, before configuration. */
   protected *compose(): Generator<Node, void, unknown> {
     // Override to yield children.
@@ -267,78 +354,34 @@ export class Node extends Destroyable {
     return this._context.optional(type)
   }
 
-  /** Loads this node and its children; failed loads roll back newly loaded children. */
-  public load(): void {
-    this.throwIfDestroyed()
-    if (
-      this._loaded ||
-      this._transitioning ||
-      this._destroying ||
-      (this._parent !== undefined && !this._parent.loaded)
-    ) {
-      throw new Error('Node cannot be loaded in its current state.')
+  protected override onDestroy(): void {
+    if (this._owner !== undefined || this._parent !== undefined || this._transitioning) {
+      throw new Error('Detach the node from its owner before destroying it.')
     }
-    this._transitioning = true
-    try {
-      this._preparation.execute(() => {
-        for (const child of this.compose()) {
-          try {
-            this.add(child)
-          } catch (error) {
-            if (
-              child._parent === undefined &&
-              child._owner === undefined &&
-              !child.destroyed &&
-              !child.loaded
-            ) {
-              try {
-                child.destroy()
-              } catch (failure) {
-                throw new AggregateError([error, failure], 'Node composition and cleanup failed.', {
-                  cause: failure,
-                })
-              }
-            }
-            throw error
-          }
-        }
-        this.configure()
-      })
-      const preserved = new Set([...this._children].filter((child) => child.loaded))
-      this._loaded = true
-      let initialized = false
-      try {
-        this.onLoad()
-        initialized = true
-        for (const child of [...this._children]) {
-          if (!child.loaded) child.load()
-        }
-      } catch (error) {
-        this._rollback = { preserved, initialized }
-        try {
-          this.unloadChildrenAndSelf()
-        } catch (failure) {
-          throw new AggregateError([error, failure], 'Node loading and rollback failed.', {
-            cause: failure,
-          })
-        }
-        throw error
-      }
-    } finally {
-      this._transitioning = false
-    }
-  }
 
-  /** Unloads non-persistent children and then this node. */
-  public unload(): void {
-    this.throwIfDestroyed()
-    if (!this._loaded || this._transitioning)
-      throw new Error('Node cannot be unloaded in its current state.')
-    this._transitioning = true
+    if (this.loaded) this.unload()
+    this._destroying = true
     try {
-      this.unloadChildrenAndSelf()
+      for (const child of [...this._children].reverse()) {
+        if (child.loaded) child.unload()
+        child._parent = undefined
+        try {
+          child.destroy()
+        } catch (error) {
+          child._parent = this
+          throw error
+        }
+
+        this._children.delete(child)
+        nodeSetLifecycle(this.children).deleted(child)
+      }
+
+      nodeSetLifecycle(this.children).destroy()
+      if (!this.name.destroyed) this.name.destroy()
+      if (!this.visible.destroyed) this.visible.destroy()
+      this.tags.clear()
     } finally {
-      this._transitioning = false
+      this._destroying = false
     }
   }
 
@@ -352,6 +395,7 @@ export class Node extends Destroyable {
         child.unload()
       }
     }
+
     if (rollback === undefined || rollback.initialized) this.onUnload()
     this._loaded = false
     this._rollback = undefined
@@ -366,6 +410,7 @@ export class Node extends Destroyable {
     ) {
       throw new Error('Child must be alive, unloaded, and unowned.')
     }
+
     if (child === this) throw new Error('Node hierarchy cannot contain a cycle.')
     for (
       let ancestor: Node | undefined = this._parent;
@@ -391,6 +436,7 @@ export class Node extends Destroyable {
     if (this._parent !== undefined || this._owner !== undefined || this.loaded) {
       throw new Error('Node must be unowned, unloaded, and without a parent.')
     }
+
     this._owner = owner
     this.setContext(context)
   }
@@ -399,33 +445,5 @@ export class Node extends Destroyable {
     if (this._owner !== owner) throw new Error('Node is not owned by this owner.')
     this._owner = undefined
     this.clearContext()
-  }
-
-  protected override onDestroy(): void {
-    if (this._owner !== undefined || this._parent !== undefined || this._transitioning) {
-      throw new Error('Detach the node from its owner before destroying it.')
-    }
-    if (this.loaded) this.unload()
-    this._destroying = true
-    try {
-      for (const child of [...this._children].reverse()) {
-        if (child.loaded) child.unload()
-        child._parent = undefined
-        try {
-          child.destroy()
-        } catch (error) {
-          child._parent = this
-          throw error
-        }
-        this._children.delete(child)
-        nodeSetLifecycle(this.children).deleted(child)
-      }
-      nodeSetLifecycle(this.children).destroy()
-      if (!this.name.destroyed) this.name.destroy()
-      if (!this.visible.destroyed) this.visible.destroy()
-      this.tags.clear()
-    } finally {
-      this._destroying = false
-    }
   }
 }

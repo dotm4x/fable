@@ -51,6 +51,7 @@ export abstract class AssetImporter<TValue = unknown>
     if (new Set(normalized).size !== normalized.length) {
       throw new Error(`Asset importer '${identifier}' declares a duplicate extension.`)
     }
+
     this.extensions = Object.freeze(normalized)
   }
 

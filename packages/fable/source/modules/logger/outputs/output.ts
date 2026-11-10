@@ -20,6 +20,7 @@ export abstract class LogOutput extends Destroyable {
     if (!Number.isFinite(priority)) {
       throw new RangeError('Log output priority must be finite.')
     }
+
     this.priority = priority
   }
 

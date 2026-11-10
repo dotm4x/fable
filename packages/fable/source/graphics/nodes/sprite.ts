@@ -62,6 +62,7 @@ export class SpriteNode extends Node2D implements Drawable {
         throw new RangeError('Sprite regions must be normalized between zero and one.')
       }
     }
+
     if (max.x < min.x || max.y < min.y) {
       throw new RangeError('Sprite regions must not be inverted.')
     }

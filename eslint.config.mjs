@@ -1,12 +1,15 @@
 import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
+import stylistic from '@stylistic/eslint-plugin'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
 import importPlugin from 'eslint-plugin-import-x'
-import simpleImportSort from 'eslint-plugin-simple-import-sort'
+import perfectionist from 'eslint-plugin-perfectionist'
+import { defineConfig } from 'eslint/config'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
+const scriptFiles = ['**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}']
 const typescriptFiles = ['**/*.{ts,tsx,mts,cts}']
+const memberGroups = ['index-signature', 'required-member', 'optional-member', 'member', 'unknown']
 const namingConvention = [
   'error',
   {
@@ -47,15 +50,18 @@ export default defineConfig(
       '**/coverage/**',
       '**/build/**',
       '**/.pnpm-store/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '**/*.generated.*',
     ],
   },
   js.configs.recommended,
   {
-    files: ['**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
+    files: scriptFiles,
     plugins: {
+      '@stylistic': stylistic,
       'import-x': importPlugin,
-      'simple-import-sort': simpleImportSort,
+      perfectionist,
     },
     settings: {
       ...importPlugin.flatConfigs.typescript.settings,
@@ -103,20 +109,58 @@ export default defineConfig(
       'object-shorthand': 'error',
       'prefer-const': 'error',
       'prefer-template': 'error',
-      'simple-import-sort/imports': [
+    },
+  },
+  {
+    files: scriptFiles,
+    rules: {
+      'perfectionist/sort-exports': ['error', { type: 'natural' }],
+      'perfectionist/sort-imports': [
         'error',
         {
+          type: 'natural',
+          internalPattern: ['^#/.+', '^@dotm4x/.+'],
           groups: [
-            ['^\\u0000'],
-            ['^node:'],
-            ['^@?\\w'],
-            ['^@dotm4x/', '^@/', '^~/', '^#'],
-            ['^\\.\\.(?!/?$)', '^\\.\\./?$'],
-            ['^\\./(?=.*/)(?!/?$)', '^\\.(?!/?$)', '^\\./?$'],
+            ['value-builtin', 'type-builtin'],
+            ['value-external', 'type-external'],
+            ['value-internal', 'type-internal'],
+            ['value-parent', 'type-parent'],
+            ['value-sibling', 'type-sibling', 'value-index', 'type-index'],
+            'side-effect',
+            'unknown',
           ],
         },
       ],
-      'simple-import-sort/exports': 'error',
+      'perfectionist/sort-named-exports': ['error', { type: 'natural' }],
+      'perfectionist/sort-named-imports': ['error', { type: 'natural' }],
+    },
+  },
+  {
+    files: typescriptFiles,
+    rules: {
+      // Groups define the member order; declaration order is preserved inside each group.
+      'perfectionist/sort-classes': [
+        'error',
+        {
+          type: 'unsorted',
+          groups: [
+            'index-signature',
+            'static-block',
+            'static-property',
+            'property',
+            'constructor',
+            ['static-get-method', 'static-set-method'],
+            ['get-method', 'set-method'],
+            'static-method',
+            'method',
+            'protected-method',
+            'private-method',
+            'unknown',
+          ],
+        },
+      ],
+      'perfectionist/sort-interfaces': ['error', { type: 'unsorted', groups: memberGroups }],
+      'perfectionist/sort-object-types': ['error', { type: 'unsorted', groups: memberGroups }],
     },
   },
   ...tseslint.configs.strictTypeChecked.map((config) => ({
@@ -210,4 +254,20 @@ export default defineConfig(
     },
   },
   eslintConfigPrettier,
+  {
+    // Prettier owns token spacing; these rules only manage structural blank lines, so they stay
+    // enabled after the Prettier compatibility config.
+    files: scriptFiles,
+    rules: {
+      '@stylistic/lines-between-class-members': [
+        'error',
+        'always',
+        { exceptAfterSingleLine: true },
+      ],
+      '@stylistic/padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: 'multiline-block-like', next: '*' },
+      ],
+    },
+  },
 )

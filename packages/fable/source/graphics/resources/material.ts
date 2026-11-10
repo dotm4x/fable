@@ -1,9 +1,9 @@
 import { Resource } from '#/core/primitives/resource.js'
 
-import { type TextureBinding } from './textures/binding.js'
 import { BlendMode } from './blend-mode.js'
 import { type Shader } from './shader.js'
 import { ShaderStage } from './shader.js'
+import { type TextureBinding } from './textures/binding.js'
 import { reservedUniformNames, type UniformValue } from './uniform.js'
 
 /** Configuration for a graphical material. */
@@ -47,11 +47,6 @@ export class GraphicMaterial extends Resource {
   /** How the material blends with the destination. */
   public readonly blend: BlendMode
 
-  /** Custom uniform values read by the shaders. */
-  public get uniforms(): ReadonlyMap<string, UniformValue> {
-    return this._uniforms
-  }
-
   /**
    * @param options - Vertex and fragment shaders, texture bindings, blend mode
    * and custom uniforms.
@@ -69,9 +64,11 @@ export class GraphicMaterial extends Resource {
     if (vertexShader.stage !== ShaderStage.vertex) {
       throw new Error('The vertex shader must use the vertex stage.')
     }
+
     if (fragmentShader.stage !== ShaderStage.fragment) {
       throw new Error('The fragment shader must use the fragment stage.')
     }
+
     if (vertexShader.language !== fragmentShader.language) {
       throw new Error('Both shaders of a material must use the same language.')
     }
@@ -81,6 +78,11 @@ export class GraphicMaterial extends Resource {
     this.textures = Object.freeze([...textures])
     this.blend = blend
     for (const [name, value] of uniforms) this.setUniform(name, value)
+  }
+
+  /** Custom uniform values read by the shaders. */
+  public get uniforms(): ReadonlyMap<string, UniformValue> {
+    return this._uniforms
   }
 
   /**
@@ -94,12 +96,15 @@ export class GraphicMaterial extends Resource {
     if (!name.trim()) {
       throw new Error('Uniform names must not be empty.')
     }
+
     if (reservedUniformNames.includes(name)) {
       throw new Error(`The uniform '${name}' is managed by the rendering pipeline.`)
     }
+
     if (typeof value === 'number' && !Number.isFinite(value)) {
       throw new Error(`The uniform '${name}' must be a finite number.`)
     }
+
     this._uniforms.set(name, value)
   }
 

@@ -16,6 +16,7 @@ const element = document.querySelector('canvas')
 if (!(element instanceof HTMLCanvasElement)) {
   throw new Error('The sandbox canvas is missing.')
 }
+
 const canvas: HTMLCanvasElement = element
 
 function selectBackend(): RenderBackend {
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
     } else {
       game.stop()
     }
+
     if (toggle instanceof HTMLButtonElement) toggle.textContent = running ? 'Pause' : 'Resume'
   })
 }

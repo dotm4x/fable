@@ -38,6 +38,7 @@ describe('Node', () => {
       protected override onLoad(): void {
         calls.push(this.name.value)
       }
+
       protected override onUnload(): void {
         calls.push(`-${this.name.value}`)
       }

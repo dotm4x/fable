@@ -2,8 +2,8 @@ import { type EventConnection } from '#/core/events/event.js'
 import { Module, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
 
-import { Asset, replaceAssetValue } from './importers/resources/asset.js'
 import { type AssetImporter } from './importer.js'
+import { Asset, replaceAssetValue } from './importers/resources/asset.js'
 import { SourceWatcher } from './watcher.js'
 
 /** Options for loading an asset. */
@@ -49,6 +49,7 @@ export class AssetsModule extends Module {
   private readonly _preparation: Once = new Once(
     'Assets module preparation has already failed or is in progress.',
   )
+
   private readonly _importers: Map<string, AssetImporter> = new Map<string, AssetImporter>()
   private readonly _extensions: Map<string, AssetImporter> = new Map<string, AssetImporter>()
   private readonly _pending: Map<string, AssetLoad> = new Map<string, AssetLoad>()
@@ -58,6 +59,30 @@ export class AssetsModule extends Module {
 
   /** Watcher that development tooling notifies when a source changes. */
   public readonly watcher: SourceWatcher
+
+  /**
+   * @param options - Initial importers whose ownership transfers to the module.
+   * @throws {@link Error} If an importer is destroyed or repeats an identifier or extension.
+   */
+  public constructor({ importers = [] }: AssetsModuleOptions = {}) {
+    super({ identifier: 'org.js.fable.AssetsModule' })
+    const declared = [...importers]
+    const identifiers = new Set<string>()
+    const extensions = new Set<string>()
+    for (const importer of declared) {
+      this.validateImporter(importer, identifiers, extensions)
+    }
+
+    for (const importer of declared) {
+      this.attachImporter(importer)
+    }
+
+    this.watcher = new SourceWatcher()
+    this._watching = this.watcher.onChange.connect((source) => {
+      if (this.destroyed) return
+      this.reload(source).catch(() => undefined)
+    })
+  }
 
   /** Importers indexed by identifier. The module retains ownership. */
   public get importers(): ReadonlyMap<string, AssetImporter> {
@@ -72,60 +97,6 @@ export class AssetsModule extends Module {
     }
 
     return assets
-  }
-
-  /**
-   * @param options - Initial importers whose ownership transfers to the module.
-   * @throws {@link Error} If an importer is destroyed or repeats an identifier or extension.
-   */
-  public constructor({ importers = [] }: AssetsModuleOptions = {}) {
-    super({ identifier: 'org.js.fable.AssetsModule' })
-    const declared = [...importers]
-    const identifiers = new Set<string>()
-    const extensions = new Set<string>()
-    for (const importer of declared) {
-      this.validateImporter(importer, identifiers, extensions)
-    }
-    for (const importer of declared) {
-      this.attachImporter(importer)
-    }
-    this.watcher = new SourceWatcher()
-    this._watching = this.watcher.onChange.connect((source) => {
-      if (this.destroyed) return
-      this.reload(source).catch(() => undefined)
-    })
-  }
-
-  /** Yields importers whose ownership transfers to the module. */
-  protected *compose(): Generator<AssetImporter, void, unknown> {
-    // Override to yield importers.
-  }
-
-  /** Configures the module once after composition. */
-  protected configure(): void {
-    // Override to configure the module.
-  }
-
-  protected override onStart(): void {
-    this._preparation.execute(() => {
-      for (const importer of this.compose()) {
-        try {
-          this.register(importer)
-        } catch (error) {
-          if (!this._importers.has(importer.identifier) && !importer.destroyed) {
-            try {
-              importer.destroy()
-            } catch (failure) {
-              throw new AggregateError([error, failure], 'Composed importer cleanup failed.', {
-                cause: failure,
-              })
-            }
-          }
-          throw error
-        }
-      }
-      this.configure()
-    })
   }
 
   /**
@@ -189,6 +160,7 @@ export class AssetsModule extends Module {
           if (!asset.destroyed) asset.destroy()
           throw new Error(`Asset '${key}' is no longer requested.`)
         }
+
         this._pending.delete(key)
         this._loaded.set(key, { asset, importer })
         return asset
@@ -273,27 +245,66 @@ export class AssetsModule extends Module {
     return true
   }
 
+  /** Yields importers whose ownership transfers to the module. */
+  protected *compose(): Generator<AssetImporter, void, unknown> {
+    // Override to yield importers.
+  }
+
+  /** Configures the module once after composition. */
+  protected configure(): void {
+    // Override to configure the module.
+  }
+
+  protected override onStart(): void {
+    this._preparation.execute(() => {
+      for (const importer of this.compose()) {
+        try {
+          this.register(importer)
+        } catch (error) {
+          if (!this._importers.has(importer.identifier) && !importer.destroyed) {
+            try {
+              importer.destroy()
+            } catch (failure) {
+              throw new AggregateError([error, failure], 'Composed importer cleanup failed.', {
+                cause: failure,
+              })
+            }
+          }
+
+          throw error
+        }
+      }
+
+      this.configure()
+    })
+  }
+
   protected override onDestroy(): void {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+
     this._watching.destroy()
     for (const reload of this._reloads.values()) {
       reload.controller.abort()
     }
+
     this._reloads.clear()
     for (const [key, pending] of this._pending) {
       this._pending.delete(key)
       pending.controller.abort()
     }
+
     for (const [key, loaded] of this._loaded) {
       this._loaded.delete(key)
       if (!loaded.asset.destroyed) loaded.asset.destroy()
     }
+
     for (const [identifier, importer] of this._importers) {
       this._importers.delete(identifier)
       if (!importer.destroyed) importer.destroy()
     }
+
     this._extensions.clear()
     if (!this.watcher.destroyed) this.watcher.destroy()
     super.onDestroy()
@@ -316,6 +327,7 @@ export class AssetsModule extends Module {
             imported.release?.()
             return
           }
+
           replaceAssetValue(loaded.asset, imported.value, imported.release)
         },
         () => undefined,
@@ -335,6 +347,7 @@ export class AssetsModule extends Module {
       if (importer === undefined) {
         throw new Error(`Asset importer '${type}' is not registered.`)
       }
+
       return importer
     }
 
@@ -356,14 +369,17 @@ export class AssetsModule extends Module {
     if (importer.destroyed) {
       throw new Error(`Asset importer '${importer.identifier}' is destroyed.`)
     }
+
     if (identifiers.has(importer.identifier)) {
       throw new Error(`Duplicate asset importer identifier '${importer.identifier}'.`)
     }
+
     identifiers.add(importer.identifier)
     for (const extension of importer.extensions) {
       if (extensions.has(extension)) {
         throw new Error(`Duplicate asset importer extension '${extension}'.`)
       }
+
       extensions.add(extension)
     }
   }

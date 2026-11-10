@@ -25,23 +25,20 @@ export class ScenesModule extends Module {
   private readonly _preparation: Once = new Once(
     'Scenes module preparation has already failed or is in progress.',
   )
+
   private readonly _context: NodeContext
   private _switching: boolean = false
   private _recovery: boolean = false
   private _rollbackNodes: readonly Node[] = []
 
-  /** Registered scenes, indexed by their stable registration name. */
-  public get scenes(): ReadonlyMap<string, Node> {
-    return new Map(this._scenes)
-  }
   /** Currently selected scene. */
   public readonly activeScene: ReadOnlyStore<Node>
-
   public constructor({ initial, scenes = [], dependencies = [] }: ScenesModuleOptions) {
     const declared = [...dependencies]
     if (!declared.some((dependency) => dependency.type === LoggerModule)) {
       declared.push({ type: LoggerModule, optional: true })
     }
+
     super({ identifier: 'org.js.fable.ScenesModule', dependencies: declared })
     this._context = {
       require: <TModule extends Module>(type: ModuleType<TModule>): TModule => this.require(type),
@@ -59,6 +56,11 @@ export class ScenesModule extends Module {
       this._activeScene.destroy()
       throw error
     }
+  }
+
+  /** Registered scenes, indexed by their stable registration name. */
+  public get scenes(): ReadonlyMap<string, Node> {
+    return new Map(this._scenes)
   }
 
   /** Registers a root scene, transferring ownership to this module. */
@@ -80,9 +82,88 @@ export class ScenesModule extends Module {
     if (scene === this._activeScene.value || scene.loaded) {
       throw new Error('Cannot remove an active or loaded scene.')
     }
+
     this._scenes.delete(identifier)
     nodeOwnership(scene).release(this)
     return scene
+  }
+
+  /**
+   * Selects a registered scene; when running, unloads the current scene and
+   * loads the next one. A failed switch attempts to restore the previous scene.
+   */
+  public switch(identifier: string): void {
+    this.throwIfDestroyed()
+    if (this._switching || this._recovery)
+      throw new Error('Scene switching is unavailable during a transition or recovery.')
+    const next = this._scenes.get(identifier)
+    if (next === undefined) throw new Error(`Scene '${identifier}' does not exist.`)
+    const current = this._activeScene.value
+    if (current === next) return
+    const state = this.state.value
+    if (state !== ModuleState.idle && state !== ModuleState.running) {
+      throw new Error(`Cannot switch scenes while module is '${state}'.`)
+    }
+
+    this._switching = true
+    const previouslyLoaded = new Set(
+      [next, ...next.descendants(true)].filter((node) => node.loaded),
+    )
+    try {
+      if (state === ModuleState.running) {
+        try {
+          current.unload()
+        } catch (error) {
+          this._recovery = true
+          throw error
+        }
+      }
+
+      try {
+        if (state === ModuleState.running) next.load()
+        this._activeScene.value = next
+      } catch (error) {
+        const failures: unknown[] = []
+        const rollback = [next, ...next.descendants(true)]
+          .reverse()
+          .filter((node) => node.loaded && !previouslyLoaded.has(node))
+        for (const node of rollback) {
+          if (!node.loaded) continue
+          try {
+            node.unload()
+          } catch (failure) {
+            failures.push(failure)
+            this._rollbackNodes = rollback
+            break
+          }
+        }
+
+        try {
+          this._activeScene.value = current
+        } catch (failure) {
+          failures.push(failure)
+        }
+
+        if (state === ModuleState.running && !current.loaded) {
+          try {
+            current.load()
+          } catch (failure) {
+            failures.push(failure)
+          }
+        }
+
+        if (failures.length > 0) {
+          this._recovery = true
+          throw new AggregateError([error, ...failures], 'Scene switching and recovery failed.', {
+            cause: error,
+          })
+        }
+
+        throw error
+      }
+    } finally {
+      this._switching = false
+    }
   }
 
   /** Yields additional owned scenes once before configuration. */
@@ -108,9 +189,11 @@ export class ScenesModule extends Module {
               cause: failure,
             })
           }
+
           throw error
         }
       }
+
       this.configure()
     })
     this._activeScene.value.load()
@@ -120,93 +203,25 @@ export class ScenesModule extends Module {
     for (const node of this._rollbackNodes) {
       if (node.loaded) node.unload()
     }
+
     this._rollbackNodes = []
     for (const scene of [...this._scenes.values()].reverse()) {
       if (scene.loaded) scene.unload()
     }
-    this._recovery = false
-  }
 
-  /**
-   * Selects a registered scene; when running, unloads the current scene and
-   * loads the next one. A failed switch attempts to restore the previous scene.
-   */
-  public switch(identifier: string): void {
-    this.throwIfDestroyed()
-    if (this._switching || this._recovery)
-      throw new Error('Scene switching is unavailable during a transition or recovery.')
-    const next = this._scenes.get(identifier)
-    if (next === undefined) throw new Error(`Scene '${identifier}' does not exist.`)
-    const current = this._activeScene.value
-    if (current === next) return
-    const state = this.state.value
-    if (state !== ModuleState.idle && state !== ModuleState.running) {
-      throw new Error(`Cannot switch scenes while module is '${state}'.`)
-    }
-    this._switching = true
-    const previouslyLoaded = new Set(
-      [next, ...next.descendants(true)].filter((node) => node.loaded),
-    )
-    try {
-      if (state === ModuleState.running) {
-        try {
-          current.unload()
-        } catch (error) {
-          this._recovery = true
-          throw error
-        }
-      }
-      try {
-        if (state === ModuleState.running) next.load()
-        this._activeScene.value = next
-      } catch (error) {
-        const failures: unknown[] = []
-        const rollback = [next, ...next.descendants(true)]
-          .reverse()
-          .filter((node) => node.loaded && !previouslyLoaded.has(node))
-        for (const node of rollback) {
-          if (!node.loaded) continue
-          try {
-            node.unload()
-          } catch (failure) {
-            failures.push(failure)
-            this._rollbackNodes = rollback
-            break
-          }
-        }
-        try {
-          this._activeScene.value = current
-        } catch (failure) {
-          failures.push(failure)
-        }
-        if (state === ModuleState.running && !current.loaded) {
-          try {
-            current.load()
-          } catch (failure) {
-            failures.push(failure)
-          }
-        }
-        if (failures.length > 0) {
-          this._recovery = true
-          throw new AggregateError([error, ...failures], 'Scene switching and recovery failed.', {
-            cause: error,
-          })
-        }
-        throw error
-      }
-    } finally {
-      this._switching = false
-    }
+    this._recovery = false
   }
 
   protected override onDestroy(): void {
     if (this._switching || (!this.state.destroyed && this.state.value !== ModuleState.idle)) {
       throw new Error('Scenes module cannot be destroyed during a transition or while running.')
     }
+
     for (const [key, scene] of this._scenes) {
       if (!scene.destroyed) nodeOwnership(scene).destroy(this)
       this._scenes.delete(key)
     }
+
     if (!this._activeScene.destroyed) this._activeScene.destroy()
     super.onDestroy()
   }

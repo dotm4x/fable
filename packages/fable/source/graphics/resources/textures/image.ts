@@ -22,6 +22,7 @@ export class ImageTexture extends Texture {
     if (image.destroyed) {
       throw new Error('The source image is destroyed.')
     }
+
     this.image = image
   }
 

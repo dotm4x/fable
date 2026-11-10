@@ -65,6 +65,7 @@ describe('Game', () => {
           game.stop()
         }).toThrow('cannot stop')
       }
+
       if (value === GameState.idle) {
         expect(() => {
           game.start()
@@ -90,6 +91,7 @@ describe('Game', () => {
     first.startHook = () => {
       second.destroy()
     }
+
     const game = new TestGame([first, second])
 
     expect(() => {
@@ -112,6 +114,7 @@ describe('Game', () => {
       expect(consumer.dependency(DependencyModule)).toBe(dependency)
       calls.push('consumer start')
     }
+
     dependency.stopHook = () => calls.push('dependency stop')
     consumer.stopHook = () => calls.push('consumer stop')
     const game = new TestGame([consumer])
@@ -211,6 +214,7 @@ describe('Game', () => {
     consumer.startHook = () => {
       throw new Error('startup failed')
     }
+
     consumer.stopHook = cleanup
     const game = new TestGame([consumer, dependency])
 
@@ -316,6 +320,7 @@ describe('Game', () => {
     consumer.startHook = () => {
       throw new Error('startup failed')
     }
+
     consumer.stopHook = vi
       .fn()
       .mockImplementationOnce(() => {

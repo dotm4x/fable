@@ -30,6 +30,7 @@ describe('InputModule', () => {
     const sendKey = (): void => {
       target.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Space', repeat: false }))
     }
+
     sendKey()
     expect(onKey).not.toHaveBeenCalled()
     game.start()
@@ -88,9 +89,11 @@ describe('InputModule', () => {
       public constructor() {
         super('broken')
       }
+
       protected override onStart(): void {
         throw new Error('device failed')
       }
+
       protected override onStop(): void {
         stops()
       }
@@ -156,9 +159,11 @@ describe('InputModule', () => {
       public constructor() {
         super('custom')
       }
+
       protected override onStart(): void {
         starts()
       }
+
       protected override onStop(): void {
         stops()
       }
@@ -168,6 +173,7 @@ describe('InputModule', () => {
       protected override *compose(): Generator<InputDevice> {
         yield device
       }
+
       protected override configure(): void {
         configure()
       }

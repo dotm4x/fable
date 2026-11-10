@@ -102,6 +102,7 @@ export class Color {
         throw new RangeError('Color byte components must be integers between 0 and 255.')
       }
     }
+
     return new Color(red / 255, green / 255, blue / 255, alpha / 255)
   }
 
@@ -117,6 +118,7 @@ export class Color {
     if (color === undefined) {
       throw new Error(`'${value}' is not a valid hexadecimal color.`)
     }
+
     return color
   }
 
@@ -135,10 +137,12 @@ export class Color {
     if (value === null || value === undefined) {
       return undefined
     }
+
     const hex = value.trim().replace(/^(?:#|0x)/i, '')
     if (!/^(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(hex)) {
       return undefined
     }
+
     const expanded =
       hex.length <= 4 ? Array.from(hex, (character) => character + character).join('') : hex
     const red = Number.parseInt(expanded.slice(0, 2), 16)
@@ -157,6 +161,7 @@ export class Color {
     if (Number.isNaN(minimum) || Number.isNaN(maximum) || minimum > maximum) {
       throw new RangeError('Color clamp bounds must be ordered numbers.')
     }
+
     const clampComponent = (value: number): number => Math.min(maximum, Math.max(minimum, value))
     return new Color(
       clampComponent(color.r),
@@ -164,11 +169,6 @@ export class Color {
       clampComponent(color.b),
       clampComponent(color.a),
     )
-  }
-
-  /** Returns this color with all components clamped to 0–1. */
-  public clamped(): Color {
-    return Color.clamp(this)
   }
 
   /**
@@ -183,6 +183,11 @@ export class Color {
   /** Creates a random opaque color. */
   public static random(): Color {
     return new Color(Math.random(), Math.random(), Math.random())
+  }
+
+  /** Returns this color with all components clamped to 0–1. */
+  public clamped(): Color {
+    return Color.clamp(this)
   }
 
   /** Adds corresponding components. */
@@ -205,6 +210,7 @@ export class Color {
     if (typeof other === 'number') {
       return new Color(this.r / other, this.g / other, this.b / other, this.a / other)
     }
+
     return new Color(this.r / other.r, this.g / other.g, this.b / other.b, this.a / other.a)
   }
 
@@ -247,6 +253,7 @@ export class Color {
         if (Number.isNaN(component)) {
           throw new RangeError('Cannot convert a NaN color component to hexadecimal.')
         }
+
         const scaled = Math.min(1, Math.max(0, component)) * 255
         const lower = Math.floor(scaled)
         const rounded = scaled - lower === 0.5 && lower % 2 === 0 ? lower : Math.round(scaled)

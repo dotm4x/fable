@@ -9,9 +9,11 @@ describe('InputDevice', () => {
       public constructor() {
         super('test')
       }
+
       protected override onStart(): void {
         throw new Error('failed')
       }
+
       protected override onStop(): void {
         cleanup()
       }

@@ -30,6 +30,7 @@ function validateVertices(vertices: Iterable<Vector2>): Vector2[] {
     if (!Number.isFinite(vertex.x) || !Number.isFinite(vertex.y)) {
       throw new Error(`Vertex ${String(position)} contains nonfinite coordinates.`)
     }
+
     validated.push(vertex)
     position++
   }

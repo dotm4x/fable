@@ -17,20 +17,25 @@ export class Mouse extends InputDevice {
   private readonly mouseDown: (event: MouseEvent) => void = (event) => {
     if (this._target !== undefined) this.handleButton(event, this._target, true)
   }
+
   private readonly mouseUp: (event: MouseEvent) => void = (event) => {
     if (this._target !== undefined) this.handleButton(event, this._target, false)
   }
+
   private readonly mouseMove: (event: MouseEvent) => void = (event) => {
     if (this._target !== undefined) this.handleMove(event, this._target)
   }
+
   private readonly wheel: (event: WheelEvent) => void = (event) => {
     if (this._target !== undefined) this.handleWheel(event, this._target)
   }
+
   private readonly _position: Store<Vector2> = new Store<Vector2>(new Vector2(0, 0))
   private readonly _onMove: Store<MouseMoveEventPayload> = new Store<MouseMoveEventPayload>({
     position: new Vector2(0, 0),
     delta: new Vector2(0, 0),
   })
+
   private readonly _onWheel: Signal<MouseWheelEventPayload> = new Signal<MouseWheelEventPayload>()
 
   /** Adding an action transfers ownership; removing it returns ownership. */
@@ -45,56 +50,6 @@ export class Mouse extends InputDevice {
   public constructor(events: Iterable<MouseButtonEvent> = []) {
     super('Mouse')
     this.events = new IdentifiableSet(events)
-  }
-
-  /** Yields actions whose ownership transfers to this mouse. */
-  protected *compose(): Generator<MouseButtonEvent, void, unknown> {
-    // Override to yield actions.
-  }
-
-  /** Configures actions once after composition. */
-  protected configure(): void {
-    // Override to configure actions.
-  }
-
-  protected override onStart(target: HTMLElement): void {
-    this._preparation.execute(() => {
-      for (const action of this.compose()) {
-        try {
-          this.events.add(action)
-        } catch (error) {
-          if (this.events.get(action.identifier) !== action && !action.destroyed) {
-            try {
-              action.destroy()
-            } catch (failure) {
-              throw new AggregateError([error, failure], 'Mouse action cleanup failed.', {
-                cause: failure,
-              })
-            }
-          }
-          throw error
-        }
-      }
-      this.configure()
-    })
-    this._target = target
-    target.addEventListener('mousedown', this.mouseDown)
-    target.addEventListener('mouseup', this.mouseUp)
-    target.addEventListener('mousemove', this.mouseMove)
-    target.addEventListener('wheel', this.wheel)
-  }
-
-  protected override onStop(): void {
-    this._target?.removeEventListener('mousedown', this.mouseDown)
-    this._target?.removeEventListener('mouseup', this.mouseUp)
-    this._target?.removeEventListener('mousemove', this.mouseMove)
-    this._target?.removeEventListener('wheel', this.wheel)
-    this._target = undefined
-  }
-
-  private positionOf(event: MouseEvent, target: HTMLElement): Vector2 {
-    const rect = target.getBoundingClientRect()
-    return new Vector2(event.clientX - rect.left, event.clientY - rect.top)
   }
 
   /** @internal Publishes a browser mouse button transition. */
@@ -132,14 +87,67 @@ export class Mouse extends InputDevice {
     })
   }
 
+  /** Yields actions whose ownership transfers to this mouse. */
+  protected *compose(): Generator<MouseButtonEvent, void, unknown> {
+    // Override to yield actions.
+  }
+
+  /** Configures actions once after composition. */
+  protected configure(): void {
+    // Override to configure actions.
+  }
+
+  protected override onStart(target: HTMLElement): void {
+    this._preparation.execute(() => {
+      for (const action of this.compose()) {
+        try {
+          this.events.add(action)
+        } catch (error) {
+          if (this.events.get(action.identifier) !== action && !action.destroyed) {
+            try {
+              action.destroy()
+            } catch (failure) {
+              throw new AggregateError([error, failure], 'Mouse action cleanup failed.', {
+                cause: failure,
+              })
+            }
+          }
+
+          throw error
+        }
+      }
+
+      this.configure()
+    })
+    this._target = target
+    target.addEventListener('mousedown', this.mouseDown)
+    target.addEventListener('mouseup', this.mouseUp)
+    target.addEventListener('mousemove', this.mouseMove)
+    target.addEventListener('wheel', this.wheel)
+  }
+
+  protected override onStop(): void {
+    this._target?.removeEventListener('mousedown', this.mouseDown)
+    this._target?.removeEventListener('mouseup', this.mouseUp)
+    this._target?.removeEventListener('mousemove', this.mouseMove)
+    this._target?.removeEventListener('wheel', this.wheel)
+    this._target = undefined
+  }
+
   protected override onDestroy(): void {
     super.onDestroy()
     for (const action of this.events) {
       if (!action.destroyed) action.destroy()
     }
+
     this.events.clear()
     if (!this._position.destroyed) this._position.destroy()
     if (!this._onMove.destroyed) this._onMove.destroy()
     if (!this._onWheel.destroyed) this._onWheel.destroy()
+  }
+
+  private positionOf(event: MouseEvent, target: HTMLElement): Vector2 {
+    const rect = target.getBoundingClientRect()
+    return new Vector2(event.clientX - rect.left, event.clientY - rect.top)
   }
 }

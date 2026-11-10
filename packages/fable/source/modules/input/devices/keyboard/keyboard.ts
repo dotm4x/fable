@@ -12,15 +12,30 @@ export class Keyboard extends InputDevice {
   private readonly keyDown: (event: KeyboardEvent) => void = (event) => {
     this.handle(event, true)
   }
+
   private readonly keyUp: (event: KeyboardEvent) => void = (event) => {
     this.handle(event, false)
   }
+
   /** Adding an action transfers ownership; removing it returns ownership. */
   public readonly events: IdentifiableSet<KeyboardInputEvent>
 
   public constructor(events: Iterable<KeyboardInputEvent> = []) {
     super('Keyboard')
     this.events = new IdentifiableSet(events)
+  }
+
+  /** @internal Publishes a browser keyboard transition. */
+  public handle(event: KeyboardEvent, down: boolean): void {
+    this.throwIfDestroyed()
+    for (const action of [...this.events]) {
+      if (this.events.get(action.identifier) !== action) continue
+      const key = action.source.value
+      if (key === event.code) {
+        const payload: KeyboardEventPayload = { key, down, repeat: event.repeat }
+        action.fire(payload)
+      }
+    }
   }
 
   /** Yields actions whose ownership transfers to this keyboard. */
@@ -48,9 +63,11 @@ export class Keyboard extends InputDevice {
               })
             }
           }
+
           throw error
         }
       }
+
       this.configure()
     })
     this._target = target
@@ -64,24 +81,12 @@ export class Keyboard extends InputDevice {
     this._target = undefined
   }
 
-  /** @internal Publishes a browser keyboard transition. */
-  public handle(event: KeyboardEvent, down: boolean): void {
-    this.throwIfDestroyed()
-    for (const action of [...this.events]) {
-      if (this.events.get(action.identifier) !== action) continue
-      const key = action.source.value
-      if (key === event.code) {
-        const payload: KeyboardEventPayload = { key, down, repeat: event.repeat }
-        action.fire(payload)
-      }
-    }
-  }
-
   protected override onDestroy(): void {
     super.onDestroy()
     for (const action of this.events) {
       if (!action.destroyed) action.destroy()
     }
+
     this.events.clear()
   }
 }

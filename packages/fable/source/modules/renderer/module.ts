@@ -41,6 +41,7 @@ export class RendererModule extends Module implements Updatable {
   private readonly _preparation: Once = new Once(
     'Renderer module preparation has already failed or is in progress.',
   )
+
   private readonly _spaces: IdentifiableSet<RenderSpace> = new IdentifiableSet<RenderSpace>()
   private readonly _passes: IdentifiableSet<RenderPass> = new IdentifiableSet<RenderPass>()
   private _rendering: boolean = false
@@ -82,23 +83,6 @@ export class RendererModule extends Module implements Updatable {
     const passes = new Map<string, RenderPass>()
     for (const pass of this._passes) passes.set(pass.identifier, pass)
     return passes
-  }
-
-  /** Yields additional spaces whose ownership transfers to the module, once. */
-  protected *compose(): Generator<RenderSpace, void, unknown> {
-    // Override to yield spaces.
-  }
-
-  /** Configures the module once after composition. */
-  protected configure(): void {
-    // Override to configure the module.
-  }
-
-  protected override onStart(): void {
-    this._preparation.execute(() => {
-      for (const space of this.compose()) this._spaces.add(space)
-      this.configure()
-    })
   }
 
   /**
@@ -171,6 +155,7 @@ export class RendererModule extends Module implements Updatable {
     if (this.state.value !== ModuleState.running) {
       throw new Error('The renderer must be running before drawing.')
     }
+
     if (this._rendering) {
       throw new Error('The renderer cannot draw recursively.')
     }
@@ -197,17 +182,37 @@ export class RendererModule extends Module implements Updatable {
     }
   }
 
+  /** Yields additional spaces whose ownership transfers to the module, once. */
+  protected *compose(): Generator<RenderSpace, void, unknown> {
+    // Override to yield spaces.
+  }
+
+  /** Configures the module once after composition. */
+  protected configure(): void {
+    // Override to configure the module.
+  }
+
+  protected override onStart(): void {
+    this._preparation.execute(() => {
+      for (const space of this.compose()) this._spaces.add(space)
+      this.configure()
+    })
+  }
+
   protected override onDestroy(): void {
     if (!this.state.destroyed && this.state.value !== ModuleState.idle) {
       throw new Error(`Module '${this.identifier}' cannot be destroyed while not idle.`)
     }
+
     for (const pass of [...this._passes]) {
       if (!pass.destroyed) pass.destroy()
     }
+
     this._passes.clear()
     for (const space of [...this._spaces]) {
       if (!space.destroyed) space.destroy()
     }
+
     this._spaces.clear()
     if (!this.clearColor.destroyed) this.clearColor.destroy()
     if (!this.backend.destroyed) this.backend.destroy()

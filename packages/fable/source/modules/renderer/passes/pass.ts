@@ -55,6 +55,7 @@ export abstract class RenderPass extends Destroyable implements Identifiable<str
     if (!identifier.trim()) {
       throw new Error('Render pass identifier must not be empty.')
     }
+
     this.identifier = identifier
     this.priority = priority
   }

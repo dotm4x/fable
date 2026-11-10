@@ -13,12 +13,6 @@ export abstract class InputDevice extends Destroyable {
     return this._active
   }
 
-  /** Attaches listeners or other resources to the borrowed element. */
-  protected abstract onStart(target: HTMLElement): void
-
-  /** Releases resources acquired by `onStart`, including after a failed start. */
-  protected abstract onStop(): void
-
   /** @internal Called by the owning module. */
   public start(target: HTMLElement): void {
     this.throwIfDestroyed()
@@ -34,6 +28,12 @@ export abstract class InputDevice extends Destroyable {
     this.onStop()
     this._active = false
   }
+
+  /** Attaches listeners or other resources to the borrowed element. */
+  protected abstract onStart(target: HTMLElement): void
+
+  /** Releases resources acquired by `onStart`, including after a failed start. */
+  protected abstract onStop(): void
 
   protected override onDestroy(): void {
     if (this._active) throw new Error(`Input device '${this.identifier}' is active.`)

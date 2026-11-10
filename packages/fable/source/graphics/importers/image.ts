@@ -47,6 +47,7 @@ async function decodeImage(blob: Blob): Promise<Image> {
     if (context === null) {
       throw new Error('A two-dimensional canvas context is unavailable.')
     }
+
     context.drawImage(bitmap, 0, 0)
     const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height)
 

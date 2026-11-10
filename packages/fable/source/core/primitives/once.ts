@@ -21,6 +21,7 @@ export class Once {
     if (this._executed) {
       return
     }
+
     if (this._executing || this._failed) {
       throw new Error(this._errorMessage)
     }

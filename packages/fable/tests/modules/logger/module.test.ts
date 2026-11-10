@@ -31,9 +31,11 @@ describe('LoggerModule', () => {
     low.hook = () => {
       calls.push('low')
     }
+
     high.hook = () => {
       calls.push('high')
     }
+
     const logger = new LoggerModule({ outputs: [low, high] })
     logger.onLog.connect(() => {
       calls.push('event')
@@ -70,6 +72,7 @@ describe('LoggerModule', () => {
       protected override *compose(): Generator<LogOutput> {
         yield output
       }
+
       protected override configure(): void {
         this.configureCount++
         expect(this.outputs.has(output)).toBe(true)
@@ -133,6 +136,7 @@ describe('LoggerModule', () => {
     first.hook = () => {
       logger.outputs.delete(second)
     }
+
     logger.log('first')
     expect(second.messages).toHaveLength(1)
     const notified = vi.fn()
@@ -140,6 +144,7 @@ describe('LoggerModule', () => {
     first.hook = () => {
       throw new Error('output failed')
     }
+
     expect(() => {
       logger.log('second')
     }).toThrow('output failed')
