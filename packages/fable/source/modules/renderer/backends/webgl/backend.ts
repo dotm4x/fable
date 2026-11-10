@@ -176,10 +176,11 @@ export class WebGlBackend extends RenderBackend {
 
     const gl = this._gl
     const size = target === undefined ? this.backbufferSize : target.size
-    if (target !== undefined && target.sampleCount > 1) this._targets.resolve(target, null)
+    const glTarget = target === undefined ? undefined : this._targets.get(target)
+    if (target !== undefined) this._targets.resolve(target, null)
     gl.bindFramebuffer(
       gl.FRAMEBUFFER,
-      target === undefined ? null : this._targets.get(target).framebuffer,
+      glTarget === undefined ? null : (glTarget.resolveFramebuffer ?? glTarget.framebuffer),
     )
     const data = new Uint8Array(size.x * size.y * 4)
     gl.readPixels(0, 0, size.x, size.y, gl.RGBA, gl.UNSIGNED_BYTE, data)

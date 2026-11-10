@@ -59,9 +59,13 @@ try {
   backend.endFrame()
 }
 
+const pixels = backend.readPixels(target)
+const center = (Math.floor(target.size.y / 2) * target.size.x + Math.floor(target.size.x / 2)) * 4
+document.body.dataset.center = pixels.data.slice(center, center + 4).join(',')
 document.body.dataset.ready = 'ready'
 document.body.dataset.drawCalls = String(backend.stats.drawCalls)
 document.body.dataset.batches = String(backend.stats.batches)
+document.body.dataset.commands = String(backend.stats.commands)
 
 function createCheckerImage(): Image {
   const size = 64
