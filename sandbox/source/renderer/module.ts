@@ -1,39 +1,25 @@
 import {
-  Camera2D,
-  Color,
   NodeRenderSpace,
   type RenderBackend,
   RendererModule,
-  RenderSpace,
   RenderSpacePriority,
   RenderTarget,
-  TextureBinding,
-  TextureSampler,
   Vector2,
 } from '@dotm4x/fable'
 
 import { type MyScenesModule } from '../scenes/module.js'
 
-import { CompositeNode } from './composite.js'
+import { PostProcessPass } from './post-process.js'
 
 /**
- * Renders the active scene into an offscreen target, then composites that
- * target onto the canvas.
+ * Renders the active scene into a multisampled offscreen target, then
+ * composites it through a post-processing pass.
  */
 export class MyRendererModule extends RendererModule {
   private readonly _target: RenderTarget
 
   public constructor(backend: RenderBackend, scenes: MyScenesModule) {
     const target = new RenderTarget(new Vector2(640, 360))
-    const composite = new RenderSpace({
-      identifier: 'composite',
-      camera: new Camera2D(),
-      entries: [
-        new CompositeNode(
-          backend.createMaterial([new TextureBinding(target, new TextureSampler())]),
-        ),
-      ],
-    })
     super({
       backend,
       spaces: [
@@ -44,9 +30,8 @@ export class MyRendererModule extends RendererModule {
           target,
           scenes,
         }),
-        composite,
       ],
-      clearColor: new Color(0.06, 0.07, 0.1),
+      passes: [new PostProcessPass(target)],
     })
     this._target = target
   }
