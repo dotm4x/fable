@@ -9,7 +9,8 @@
     "start": "pnpm dev",
     "preview": "vite preview",
     "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json",
-    "test:gpu": "playwright test"
+    "test:gpu": "playwright test",
+    "bench": "node scripts/bench-balls.mjs"
   },
   "dependencies": {
     "@dotm4x/fable": "workspace:*"

@@ -39,6 +39,8 @@ export class Sandbox extends Game implements Updatable {
     if (delta !== null) delta.textContent = context.deltaTime.toFixed(3)
     const draws = document.querySelector('#draws')
     if (draws !== null) draws.textContent = String(this.renderer.backend.stats.drawCalls)
+    const commands = document.querySelector('#commands')
+    if (commands !== null) commands.textContent = String(this.renderer.backend.stats.commands)
   }
 
   protected override *compose(): Generator<Module> {
