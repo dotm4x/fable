@@ -45,7 +45,7 @@ void main() {
  *
  * @returns A GLSL material for the standard two-dimensional pipeline.
  */
-export function createDraw2DMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial {
+export function createDefaultMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial {
   return new GraphicMaterial({
     vertexShader: new Shader({
       code: vertexSource,
