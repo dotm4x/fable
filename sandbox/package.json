@@ -8,12 +8,15 @@
     "dev": "pnpm --filter @dotm4x/fable build && vite",
     "start": "pnpm dev",
     "preview": "vite preview",
-    "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json"
+    "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json",
+    "test:gpu": "playwright test"
   },
   "dependencies": {
     "@dotm4x/fable": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
     "vite": "^8.3.6"
   }
 }

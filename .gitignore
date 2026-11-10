@@ -15,3 +15,7 @@ coverage/
 
 # Editor/FUSE temp files
 .fuse_hidden*
+
+# Playwright artifacts
+playwright-report/
+test-results/
