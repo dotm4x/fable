@@ -1,3 +1,2 @@
-export { RenderBackend } from './backend.js'
-export { WebGlBackend, type WebGlBackendOptions } from './webgl/index.js'
-export { createShaderModule, WebGpuBackend, type WebGpuBackendOptions } from './webgpu/index.js'
+export { RenderBackend, type RenderStats } from './backend.js'
+export { WebGlBackend, type WebGlBackendHooks, type WebGlBackendOptions } from './webgl/index.js'

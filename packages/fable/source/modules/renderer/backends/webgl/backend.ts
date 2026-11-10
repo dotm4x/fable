@@ -16,9 +16,9 @@ import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
 import { RenderBackend, type RenderStats } from '../backend.js'
 
+import { applySampler, matrixValues, required } from './helpers/index.js'
 import { createDefaultMaterial } from './shaders/draw2d.js'
 import { GlMeshes, GlPrograms, GlTargets, GlTextures } from './caches.js'
-import { applySampler, matrixValues, required } from './helpers.js'
 import { type WebGlBackendHooks } from './hooks.js'
 
 const floatsPerVertex = 8

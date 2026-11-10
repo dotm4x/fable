@@ -6,7 +6,7 @@ import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 import { ImageTexture } from '#/graphics/resources/textures/image.js'
 
-import { applySampler, required } from './helpers.js'
+import { applySampler, required } from './helpers/index.js'
 
 const floatsPerVertex = 8
 const bytesPerVertex = floatsPerVertex * 4

@@ -8,7 +8,6 @@ import {
   TextureBinding,
   TextureSampler,
   WebGlBackend,
-  WebGpuBackend,
 } from '@dotm4x/fable'
 
 import { Sandbox } from './sandbox.js'
@@ -19,13 +18,8 @@ if (!(element instanceof HTMLCanvasElement)) {
 }
 const canvas: HTMLCanvasElement = element
 
-async function selectBackend(): Promise<RenderBackend> {
-  try {
-    return await WebGpuBackend.create({ canvas })
-  } catch (error) {
-    console.warn('WebGPU is unavailable; falling back to the WebGL backend.', error)
-    return new WebGlBackend({ canvas })
-  }
+function selectBackend(): RenderBackend {
+  return new WebGlBackend({ canvas })
 }
 
 async function createMaterial(
@@ -40,7 +34,7 @@ async function createMaterial(
 }
 
 async function main(): Promise<void> {
-  const backend = await selectBackend()
+  const backend = selectBackend()
   const assets = new AssetsModule({ importers: [new ImageImporter()] })
   const material = await createMaterial(backend, assets)
   const game = new Sandbox(backend, material, assets)
