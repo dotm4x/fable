@@ -4,6 +4,7 @@ import { type TextureBinding } from './textures/binding.js'
 import { BlendMode } from './blend-mode.js'
 import { type Shader } from './shader.js'
 import { ShaderStage } from './shader.js'
+import { reservedUniformNames, type UniformValue } from './uniform.js'
 
 /** Configuration for a graphical material. */
 export interface GraphicMaterialOptions {
@@ -15,6 +16,8 @@ export interface GraphicMaterialOptions {
   readonly textures?: Iterable<TextureBinding>
   /** How the material blends with the destination. Defaults to alpha. */
   readonly blend?: BlendMode
+  /** Extra uniform values read by the shaders. Defaults to none. */
+  readonly uniforms?: Iterable<readonly [string, UniformValue]>
 }
 
 /**
@@ -24,8 +27,14 @@ export interface GraphicMaterialOptions {
  * vertex and fragment shaders, together with the textures and samplers
  * consumed by those shaders. All referenced shaders, textures and samplers are
  * borrowed and are not destroyed with the material.
+ *
+ * Shaders may declare custom uniform values in addition to the uniforms owned
+ * by the pipeline; they are provided with {@link uniforms} and
+ * {@link setUniform}. Removed values stop being uploaded on the next draw.
  */
 export class GraphicMaterial extends Resource {
+  private readonly _uniforms: Map<string, UniformValue> = new Map<string, UniformValue>()
+
   /** Vertex shader used to process geometry vertices. */
   public readonly vertexShader: Shader
 
@@ -38,15 +47,23 @@ export class GraphicMaterial extends Resource {
   /** How the material blends with the destination. */
   public readonly blend: BlendMode
 
+  /** Custom uniform values read by the shaders. */
+  public get uniforms(): ReadonlyMap<string, UniformValue> {
+    return this._uniforms
+  }
+
   /**
-   * @param options - Vertex and fragment shaders plus texture bindings.
-   * @throws {@link Error} If a shader uses the wrong stage or the shaders mix languages.
+   * @param options - Vertex and fragment shaders, texture bindings, blend mode
+   * and custom uniforms.
+   * @throws {@link Error} If a shader uses the wrong stage, the shaders mix
+   * languages, or a custom uniform reuses a pipeline uniform name.
    */
   public constructor({
     vertexShader,
     fragmentShader,
     textures = [],
     blend = BlendMode.alpha,
+    uniforms = [],
   }: GraphicMaterialOptions) {
     super()
     if (vertexShader.stage !== ShaderStage.vertex) {
@@ -63,5 +80,36 @@ export class GraphicMaterial extends Resource {
     this.fragmentShader = fragmentShader
     this.textures = Object.freeze([...textures])
     this.blend = blend
+    for (const [name, value] of uniforms) this.setUniform(name, value)
+  }
+
+  /**
+   * Sets a custom uniform value.
+   *
+   * @param name - Uniform name declared by the shaders.
+   * @param value - Value uploaded on the next draw.
+   * @throws {@link Error} If the name is empty, reserved, or the value is invalid.
+   */
+  public setUniform(name: string, value: UniformValue): void {
+    if (!name.trim()) {
+      throw new Error('Uniform names must not be empty.')
+    }
+    if (reservedUniformNames.includes(name)) {
+      throw new Error(`The uniform '${name}' is managed by the rendering pipeline.`)
+    }
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+      throw new Error(`The uniform '${name}' must be a finite number.`)
+    }
+    this._uniforms.set(name, value)
+  }
+
+  /**
+   * Removes a custom uniform value.
+   *
+   * @param name - Uniform name to remove.
+   * @returns Whether the uniform was present.
+   */
+  public removeUniform(name: string): boolean {
+    return this._uniforms.delete(name)
   }
 }

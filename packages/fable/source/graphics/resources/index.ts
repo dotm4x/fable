@@ -5,3 +5,4 @@ export { Shader, ShaderLanguage, type ShaderOptions, ShaderStage } from './shade
 export { ShaderSource, type ShaderSourceOptions } from './shader-source.js'
 export * from './targets/index.js'
 export * from './textures/index.js'
+export { reservedUniformNames, type UniformValue } from './uniform.js'
