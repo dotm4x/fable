@@ -19,7 +19,12 @@ export class MyRendererModule extends RendererModule {
   private readonly _target: RenderTarget
 
   public constructor(backend: RenderBackend, scenes: MyScenesModule) {
-    const target = new RenderTarget(new Vector2(640, 360))
+    const params = new URLSearchParams(globalThis.location.search)
+    const direct = params.get('target') === '0'
+    const samples = Number(params.get('samples') ?? 4)
+    const target = new RenderTarget(new Vector2(640, 360), {
+      sampleCount: Number.isFinite(samples) && samples >= 1 ? Math.floor(samples) : 4,
+    })
     super({
       backend,
       spaces: [
@@ -27,11 +32,12 @@ export class MyRendererModule extends RendererModule {
           identifier: 'scene',
           camera: scenes.camera,
           priority: RenderSpacePriority.low,
-          target,
+          cull: params.get('cull') !== '0',
+          ...(direct ? {} : { target }),
           scenes,
         }),
       ],
-      passes: [new PostProcessPass(target)],
+      passes: direct ? [] : [new PostProcessPass(target)],
     })
     this._target = target
   }
