@@ -1,1 +1,1 @@
-export { RenderTarget, type RenderTargetOptions } from './target.js'
+export { RenderTarget, RenderTargetFormat, type RenderTargetOptions } from './target.js'

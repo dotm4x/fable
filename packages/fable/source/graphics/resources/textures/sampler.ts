@@ -15,6 +15,8 @@ export interface TextureSamplerOptions {
   readonly addressV?: TextureAddressMode
   /** Whether mipmaps are generated and sampled. Defaults to false. */
   readonly mipmaps?: boolean
+  /** Anisotropic filtering level. Defaults to 1, which disables it. */
+  readonly anisotropy?: number
 }
 
 /**
@@ -39,8 +41,12 @@ export class TextureSampler extends Resource {
   /** Whether mipmaps are generated and sampled. */
   public readonly mipmaps: boolean
 
+  /** Anisotropic filtering level, where `1` disables it. */
+  public readonly anisotropy: number
+
   /**
-   * @param options - Filtering and addressing modes.
+   * @param options - Filtering, addressing and anisotropic filtering options.
+   * @throws {@link RangeError} If the anisotropy is not a positive integer.
    */
   public constructor({
     minFilter = TextureFilter.linear,
@@ -48,12 +54,18 @@ export class TextureSampler extends Resource {
     addressU = TextureAddressMode.clampToEdge,
     addressV = TextureAddressMode.clampToEdge,
     mipmaps = false,
+    anisotropy = 1,
   }: TextureSamplerOptions = {}) {
     super()
+    if (!Number.isInteger(anisotropy) || anisotropy < 1) {
+      throw new RangeError('Texture anisotropy must be a positive integer.')
+    }
+
     this.minFilter = minFilter
     this.magFilter = magFilter
     this.addressU = addressU
     this.addressV = addressV
     this.mipmaps = mipmaps
+    this.anisotropy = anisotropy
   }
 }

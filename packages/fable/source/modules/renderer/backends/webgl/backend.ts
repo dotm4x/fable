@@ -16,10 +16,10 @@ import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 
 import { RenderBackend, type RenderStats } from '../backend.js'
 
-import { applySampler, applyUniform, matrixValues, required } from './helpers/index.js'
-import { createDefaultMaterial } from './shaders/draw2d.js'
 import { GlMeshes, GlPrograms, GlTargets, GlTextures } from './caches.js'
+import { applySampler, applyUniform, matrixValues, required } from './helpers/index.js'
 import { type WebGlBackendHooks } from './hooks.js'
+import { createDefaultMaterial } from './shaders/draw2d.js'
 
 const floatsPerVertex = 8
 const bytesPerVertex = floatsPerVertex * 4
@@ -33,6 +33,8 @@ export interface WebGlBackendOptions {
   readonly identifier?: string
   /** Whether the drawing surface is antialiased. Defaults to true. */
   readonly antialias?: boolean
+  /** VRAM budget of the texture cache, in bytes. Defaults to 64 MiB. */
+  readonly textureBudget?: number
   /** Extension hooks invoked while rendering. */
   readonly hooks?: WebGlBackendHooks
 }
@@ -80,6 +82,7 @@ export class WebGlBackend extends RenderBackend {
     canvas,
     identifier = 'webgl',
     antialias = true,
+    textureBudget = 64 * 1024 * 1024,
     hooks = {},
   }: WebGlBackendOptions) {
     super(identifier)
@@ -93,13 +96,14 @@ export class WebGlBackend extends RenderBackend {
     this._hooks = hooks
     this._programs = new GlPrograms(gl)
     this._meshes = new GlMeshes(gl)
-    this._textures = new GlTextures(gl)
+    this._textures = new GlTextures(gl, textureBudget)
     this._targets = new GlTargets(gl)
     this.defaultMaterial = this.createMaterial()
     this._onContextLost = (event: Event): void => {
       event.preventDefault()
       this._contextLost = true
     }
+
     this._onContextRestored = (): void => {
       this._programs.clear()
       this._meshes.clear()
@@ -109,18 +113,28 @@ export class WebGlBackend extends RenderBackend {
       this.resetBatchBuffers()
       this._contextLost = false
     }
+
     canvas.addEventListener('webglcontextlost', this._onContextLost)
     canvas.addEventListener('webglcontextrestored', this._onContextRestored)
   }
 
   /** @inheritDoc */
-  public createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial {
-    return createDefaultMaterial(textures)
+  public get stats(): RenderStats {
+    return {
+      drawCalls: this._drawCalls,
+      batches: this._batchCount,
+      textures: this._textures.count,
+      textureBytes: this._textures.bytes,
+    }
   }
 
-  /** @inheritDoc */
-  public get stats(): RenderStats {
-    return { drawCalls: this._drawCalls, batches: this._batchCount }
+  /** VRAM budget of the texture cache, in bytes. */
+  public get textureBudget(): number {
+    return this._textures.budget
+  }
+
+  public set textureBudget(value: number) {
+    this._textures.budget = value
   }
 
   /** @inheritDoc */
@@ -128,10 +142,25 @@ export class WebGlBackend extends RenderBackend {
     return new Viewport(new Vector2(0, 0), new Vector2(this._canvas.width, this._canvas.height))
   }
 
+  private get backbufferSize(): Vector2 {
+    return new Vector2(this._canvas.width, this._canvas.height)
+  }
+
+  /** @inheritDoc */
+  public createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial {
+    return createDefaultMaterial(textures)
+  }
+
+  /** Releases cached textures; their sources re-upload them when used again. */
+  public releaseTextures(): void {
+    this._textures.release()
+  }
+
   protected override onBeginFrame(): void {
     if (this._contextLost) {
       throw new Error('The WebGL context was lost.')
     }
+
     this.syncCanvasSize()
     this._drawCalls = 0
     this._batchCount = 0
@@ -174,6 +203,7 @@ export class WebGlBackend extends RenderBackend {
           batch.push(command)
         }
       }
+
       flush()
     } finally {
       this._target = undefined
@@ -194,10 +224,6 @@ export class WebGlBackend extends RenderBackend {
     this._targets.clear()
     this.deleteBatchBuffers()
     if (!this.defaultMaterial.destroyed) this.defaultMaterial.destroy()
-  }
-
-  private get backbufferSize(): Vector2 {
-    return new Vector2(this._canvas.width, this._canvas.height)
   }
 
   private clear(color: Color): void {
@@ -241,6 +267,7 @@ export class WebGlBackend extends RenderBackend {
       vertexCount += command.mesh.vertices.length
       indexCount += command.mesh.indices.length
     }
+
     this.ensureBatchBuffers(vertexCount, indexCount)
 
     let vertex = 0
@@ -262,6 +289,7 @@ export class WebGlBackend extends RenderBackend {
         this._batchVertices[offset + 7] = item.color.a
         vertex++
       }
+
       for (const item of command.mesh.indices) {
         this._batchIndices[index] = item + base
         index++
@@ -314,12 +342,14 @@ export class WebGlBackend extends RenderBackend {
       gl.activeTexture(gl.TEXTURE0 + index)
       gl.bindTexture(gl.TEXTURE_2D, this.textureFor(binding))
     }
+
     gl.uniform1iv(program.textures, [0, 1, 2, 3])
     for (const [name, value] of material.uniforms) {
       const location = this._programs.uniformLocation(program, name)
       if (location === undefined) continue
       applyUniform(gl, location, value)
     }
+
     this.applyBlend(material.blend)
   }
 
@@ -333,7 +363,11 @@ export class WebGlBackend extends RenderBackend {
       if (binding.texture !== this._target) {
         this._targets.resolve(binding.texture, this._framebuffer)
       }
-      applySampler(this._gl, binding.sampler, false)
+
+      const gl = this._gl
+      gl.bindTexture(gl.TEXTURE_2D, target.texture)
+      applySampler(gl, binding.sampler, binding.texture.mipmaps)
+      if (binding.texture.mipmaps) gl.generateMipmap(gl.TEXTURE_2D)
 
       return target.texture
     }

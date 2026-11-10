@@ -20,6 +20,7 @@ import {
   RenderPassPriority,
   RenderSpace,
   RenderSpacePriority,
+  type RenderStats,
   RenderTarget,
   Shader,
   ShaderLanguage,
@@ -32,20 +33,24 @@ class TestGame extends Game {}
 
 class TestBackend extends RenderBackend {
   public readonly defaultMaterial: GraphicMaterial = createMaterial()
-  public get stats(): { drawCalls: number; batches: number } {
-    return { drawCalls: 0, batches: 0 }
-  }
   public readonly events: string[] = []
   public readonly rendered: DrawCommand[][] = []
   public readonly contexts: (DrawContext | undefined)[] = []
   public readonly targets: (RenderTarget | undefined)[] = []
-
   public constructor() {
     super('test')
   }
 
+  public get stats(): RenderStats {
+    return { drawCalls: 0, batches: 0, textures: 0, textureBytes: 0 }
+  }
+
   public get viewport(): Viewport {
     return new Viewport(new Vector2(0, 0), new Vector2(100, 50))
+  }
+
+  public createMaterial(): GraphicMaterial {
+    return createMaterial()
   }
 
   protected override onBeginFrame(): void {
@@ -54,10 +59,6 @@ class TestBackend extends RenderBackend {
 
   protected override onEndFrame(): void {
     this.events.push('end')
-  }
-
-  public createMaterial(): GraphicMaterial {
-    return createMaterial()
   }
 
   protected override onRender(

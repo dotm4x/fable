@@ -27,4 +27,19 @@ describe('TextureSampler', () => {
     expect(sampler.addressV).toBe(TextureAddressMode.mirroredRepeat)
     sampler.destroy()
   })
+
+  it('defaults to isotropic sampling and accepts an anisotropy level', () => {
+    const sampler = new TextureSampler()
+    const anisotropic = new TextureSampler({ anisotropy: 8 })
+
+    expect(sampler.anisotropy).toBe(1)
+    expect(anisotropic.anisotropy).toBe(8)
+    sampler.destroy()
+    anisotropic.destroy()
+  })
+
+  it('rejects anisotropy levels that are not positive integers', () => {
+    expect(() => new TextureSampler({ anisotropy: 0 })).toThrow('positive integer')
+    expect(() => new TextureSampler({ anisotropy: 1.5 })).toThrow('positive integer')
+  })
 })

@@ -13,6 +13,8 @@ export interface Draw2DCommandOptions {
   readonly transform: Matrix3x2
   /** Draw order within the space; lower orders are drawn first. Defaults to zero. */
   readonly order?: number
+  /** Depth used by spaces that sort back to front. Defaults to zero. */
+  readonly depth?: number
 }
 
 /**
@@ -36,13 +38,17 @@ export class Draw2DCommand {
   /** Draw order within the space; lower orders are drawn first. */
   public readonly order: number
 
+  /** Depth used by spaces that sort back to front; larger values are farther away. */
+  public readonly depth: number
+
   /**
-   * @param options - Mesh, material and transform.
+   * @param options - Mesh, material, transform, order and depth.
    */
-  public constructor({ mesh, material, transform, order = 0 }: Draw2DCommandOptions) {
+  public constructor({ mesh, material, transform, order = 0, depth = 0 }: Draw2DCommandOptions) {
     this.mesh = mesh
     this.material = material
     this.transform = transform
     this.order = order
+    this.depth = depth
   }
 }

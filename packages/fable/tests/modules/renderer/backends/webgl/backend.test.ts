@@ -16,6 +16,7 @@ import {
   RasterImageFormat,
   RenderContext,
   RenderTarget,
+  RenderTargetFormat,
   Shader,
   ShaderLanguage,
   ShaderStage,
@@ -72,7 +73,7 @@ describe('WebGlBackend', () => {
     vi.unstubAllGlobals()
   })
 
-  function createBackend(options?: { antialias?: boolean }): {
+  function createBackend(options?: { antialias?: boolean; textureBudget?: number }): {
     backend: WebGlBackend
     harness: GlHarness
   } {
@@ -130,7 +131,7 @@ describe('WebGlBackend', () => {
 
     expect(harness.drawCalls).toHaveLength(1)
     expect(harness.drawCalls[0]?.args[1]).toBe(9)
-    expect(backend.stats).toEqual({ drawCalls: 1, batches: 1 })
+    expect(backend.stats).toEqual({ drawCalls: 1, batches: 1, textures: 0, textureBytes: 0 })
     expect(
       harness.gl.callsTo('bufferData').some((call) => call.args[2] === harness.gl.DYNAMIC_DRAW),
     ).toBe(true)
@@ -320,5 +321,100 @@ describe('WebGlBackend', () => {
     expect(harness.gl.callsTo('blitFramebuffer')).toHaveLength(0)
     backend.destroy()
     target.destroy()
+  })
+
+  it('applies anisotropic filtering when the sampler requests it', () => {
+    const { backend, harness } = createBackend()
+    const image = new Image(2, 2, new Uint8Array(16))
+    const sampler = new TextureSampler({ anisotropy: 8 })
+    const texture = new ImageTexture(image)
+    const material = createMaterial([new TextureBinding(texture, sampler)])
+
+    backend.beginFrame()
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+
+    const calls = harness.gl.callsTo('texParameterf')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.args[1]).toBe(0x84fe)
+    expect(calls[0]?.args[2]).toBe(8)
+    backend.destroy()
+    sampler.destroy()
+    texture.destroy()
+    image.destroy()
+  })
+
+  it('creates float render targets and multisamples them with the same format', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(64, 32), {
+      format: RenderTargetFormat.rgba16f,
+    })
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, target)
+    backend.endFrame()
+
+    const texture = harness.gl
+      .callsTo('texImage2D')
+      .find((call) => call.args[2] === harness.gl.RGBA16F)
+    expect(texture?.args[7]).toBe(harness.gl.HALF_FLOAT)
+    const renderbuffer = harness.gl.callsTo('renderbufferStorageMultisample')
+    expect(renderbuffer[0]?.args[2]).toBe(harness.gl.RGBA16F)
+    backend.destroy()
+    target.destroy()
+  })
+
+  it('generates mipmaps when a target requests them', () => {
+    const { backend, harness } = createBackend()
+    const target = new RenderTarget(new Vector2(64, 32), {
+      sampleCount: 1,
+      mipmaps: true,
+    })
+    const sampler = new TextureSampler({ mipmaps: true })
+    const material = createMaterial([new TextureBinding(target, sampler)])
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, target)
+    backend.render([createCommand(material)], createContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('generateMipmap')).toHaveLength(1)
+    backend.destroy()
+    sampler.destroy()
+    target.destroy()
+  })
+
+  it('evicts least recently used textures beyond the budget and releases them', () => {
+    const { backend, harness } = createBackend({ textureBudget: 20 })
+    const images = [new Image(2, 2, new Uint8Array(16)), new Image(2, 2, new Uint8Array(16))]
+    const samplers = images.map(() => new TextureSampler())
+    const textures = images.map((image) => new ImageTexture(image))
+    const materials = textures.map((texture, index) =>
+      createMaterial([new TextureBinding(texture, samplers[index] ?? new TextureSampler())]),
+    )
+
+    backend.beginFrame()
+    for (const material of materials) {
+      backend.render([createCommand(material)], createContext())
+    }
+
+    expect(backend.stats.textures).toBe(1)
+    expect(backend.stats.textureBytes).toBe(16)
+    expect(harness.gl.callsTo('deleteTexture').length).toBeGreaterThan(0)
+
+    const firstMaterial = materials[0]
+    if (firstMaterial !== undefined) {
+      backend.render([createCommand(firstMaterial)], createContext())
+    }
+
+    backend.endFrame()
+
+    backend.releaseTextures()
+    expect(backend.stats.textures).toBe(0)
+    expect(backend.stats.textureBytes).toBe(0)
+    backend.destroy()
+    for (const sampler of samplers) sampler.destroy()
+    for (const texture of textures) texture.destroy()
+    for (const image of images) image.destroy()
   })
 })

@@ -14,6 +14,10 @@ export interface RenderStats {
   readonly drawCalls: number
   /** Number of batches or passes issued. */
   readonly batches: number
+  /** Number of textures currently uploaded. */
+  readonly textures: number
+  /** Bytes of texture data currently uploaded. */
+  readonly textureBytes: number
 }
 
 /**
@@ -30,6 +34,13 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
   public readonly identifier: string
 
   /**
+   * Default material of the standard two-dimensional pipeline.
+   *
+   * The backend owns it and destroys it with the backend.
+   */
+  public abstract readonly defaultMaterial: GraphicMaterial
+
+  /**
    * @param identifier - The nonempty backend identifier.
    * @throws {@link Error} If the identifier is empty.
    */
@@ -38,15 +49,15 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
     if (!identifier.trim()) {
       throw new Error('Render backend identifier must not be empty.')
     }
+
     this.identifier = identifier
   }
 
-  /**
-   * Default material of the standard two-dimensional pipeline.
-   *
-   * The backend owns it and destroys it with the backend.
-   */
-  public abstract readonly defaultMaterial: GraphicMaterial
+  /** Draw call counters for the last completed frame. */
+  public abstract get stats(): RenderStats
+
+  /** Size of the drawing surface in physical pixels. */
+  public abstract get viewport(): Viewport
 
   /**
    * Creates a material for the standard two-dimensional pipeline.
@@ -59,31 +70,6 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
    */
   public abstract createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial
 
-  /** Draw call counters for the last completed frame. */
-  public abstract get stats(): RenderStats
-
-  /** Size of the drawing surface in physical pixels. */
-  public abstract get viewport(): Viewport
-
-  /** Acquires the resources needed to begin a frame. */
-  protected abstract onBeginFrame(): void
-
-  /** Finishes and presents the active frame. */
-  protected abstract onEndFrame(): void
-
-  /**
-   * Executes commands in order on a drawing destination.
-   *
-   * Clear commands need no context; drawing commands require the context of the
-   * space that produced them. The target is borrowed and is not owned by the
-   * backend.
-   */
-  protected abstract onRender(
-    commands: readonly DrawCommand[],
-    context: DrawContext | undefined,
-    target: RenderTarget | undefined,
-  ): void
-
   /**
    * Begins a frame.
    *
@@ -94,6 +80,7 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
     if (this._frameActive) {
       throw new Error('A drawing frame is already active.')
     }
+
     this.onBeginFrame()
     this._frameActive = true
   }
@@ -127,9 +114,11 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
     if (!this._frameActive) {
       throw new Error('A drawing frame must be active before rendering.')
     }
+
     if (target?.destroyed === true) {
       throw new Error('The drawing target is destroyed.')
     }
+
     const list = [...commands]
     if (context === undefined && list.some((command) => !(command instanceof ClearCommand))) {
       throw new Error('Drawing commands require a drawing context.')
@@ -137,4 +126,23 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
 
     this.onRender(list, context, target)
   }
+
+  /** Acquires the resources needed to begin a frame. */
+  protected abstract onBeginFrame(): void
+
+  /** Finishes and presents the active frame. */
+  protected abstract onEndFrame(): void
+
+  /**
+   * Executes commands in order on a drawing destination.
+   *
+   * Clear commands need no context; drawing commands require the context of the
+   * space that produced them. The target is borrowed and is not owned by the
+   * backend.
+   */
+  protected abstract onRender(
+    commands: readonly DrawCommand[],
+    context: DrawContext | undefined,
+    target: RenderTarget | undefined,
+  ): void
 }

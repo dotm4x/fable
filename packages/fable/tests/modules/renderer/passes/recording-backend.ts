@@ -3,6 +3,7 @@ import {
   type DrawContext,
   GraphicMaterial,
   RenderBackend,
+  type RenderStats,
   type RenderTarget,
   Shader,
   ShaderLanguage,
@@ -41,8 +42,8 @@ export class RecordingBackend extends RenderBackend {
     this._viewport = viewport ?? new Viewport(new Vector2(0, 0), new Vector2(100, 50))
   }
 
-  public get stats(): { drawCalls: number; batches: number } {
-    return { drawCalls: 0, batches: 0 }
+  public get stats(): RenderStats {
+    return { drawCalls: 0, batches: 0, textures: 0, textureBytes: 0 }
   }
 
   public get viewport(): Viewport {

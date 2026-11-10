@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { RenderTarget, Vector2 } from '../../../../source/index.js'
+import { RenderTarget, RenderTargetFormat, Vector2 } from '../../../../source/index.js'
 
 describe('RenderTarget', () => {
   it('exposes its size', () => {
@@ -38,5 +38,24 @@ describe('RenderTarget', () => {
     expect(() => new RenderTarget(new Vector2(10, 10), { sampleCount: 2.5 })).toThrow(
       'positive integers',
     )
+  })
+
+  it('defaults to an rgba8 target without mipmaps', () => {
+    const target = new RenderTarget(new Vector2(320, 180))
+
+    expect(target.format).toBe(RenderTargetFormat.rgba8)
+    expect(target.mipmaps).toBe(false)
+    target.destroy()
+  })
+
+  it('accepts a float format and mipmaps', () => {
+    const target = new RenderTarget(new Vector2(320, 180), {
+      format: RenderTargetFormat.rgba16f,
+      mipmaps: true,
+    })
+
+    expect(target.format).toBe(RenderTargetFormat.rgba16f)
+    expect(target.mipmaps).toBe(true)
+    target.destroy()
   })
 })

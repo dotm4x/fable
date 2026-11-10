@@ -13,6 +13,8 @@ import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 import { Vector4 } from '#/math/primitives/vectors/vector4.js'
 
+import { RenderSortMode } from './sort.js'
+
 /** Drawing priority of a space. Lower priorities are collected first. */
 export enum RenderSpacePriority {
   low,
@@ -33,6 +35,8 @@ export interface RenderSpaceOptions {
   readonly target?: RenderTarget
   /** Whether commands outside the camera view are skipped. Defaults to true. */
   readonly cull?: boolean
+  /** Command ordering. Defaults to order. */
+  readonly sort?: RenderSortMode
   /** Initial borrowed drawable entries. */
   readonly entries?: Iterable<Drawable>
 }
@@ -63,6 +67,9 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
   /** Whether commands outside the camera view are skipped. */
   public readonly cull: boolean
 
+  /** Command ordering applied after collection. */
+  public readonly sort: RenderSortMode
+
   /** Borrowed drawable entries. */
   public readonly entries: ReactiveSet<Drawable>
 
@@ -76,6 +83,7 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     priority = RenderSpacePriority.normal,
     target,
     cull = true,
+    sort = RenderSortMode.order,
     entries = [],
   }: RenderSpaceOptions) {
     super()
@@ -88,17 +96,8 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     this.camera = new Store(camera)
     this.target = new Store(target)
     this.cull = cull
+    this.sort = sort
     this.entries = new ReactiveSet(entries)
-  }
-
-  /** Yields additional borrowed drawable entries, once. */
-  protected *compose(): Generator<Drawable, void, unknown> {
-    // Override to yield entries.
-  }
-
-  /** Configures the space once after composition. */
-  protected configure(): void {
-    // Override to configure the space.
   }
 
   /**
@@ -129,13 +128,33 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
         materials.set(command.material, materials.size)
       }
     }
+
+    const depth = this.sort === RenderSortMode.depth
     visible.sort(
       (left, right) =>
+        (depth ? depthOf(right) - depthOf(left) : 0) ||
         orderOf(left) - orderOf(right) ||
         materialOf(left, materials) - materialOf(right, materials),
     )
 
     return visible
+  }
+
+  /** Yields additional borrowed drawable entries, once. */
+  protected *compose(): Generator<Drawable, void, unknown> {
+    // Override to yield entries.
+  }
+
+  /** Configures the space once after composition. */
+  protected configure(): void {
+    // Override to configure the space.
+  }
+
+  protected override onDestroy(): void {
+    this.entries.clear()
+    if (!this.camera.destroyed) this.camera.destroy()
+    if (!this.target.destroyed) this.target.destroy()
+    super.onDestroy()
   }
 
   private isVisible(command: DrawCommand, context: DrawContext): boolean {
@@ -166,13 +185,6 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
 
     return !(outsideLeft || outsideRight || outsideBelow || outsideAbove)
   }
-
-  protected override onDestroy(): void {
-    this.entries.clear()
-    if (!this.camera.destroyed) this.camera.destroy()
-    if (!this.target.destroyed) this.target.destroy()
-    super.onDestroy()
-  }
 }
 
 function orderOf(command: DrawCommand): number {
@@ -181,4 +193,8 @@ function orderOf(command: DrawCommand): number {
 
 function materialOf(command: DrawCommand, materials: ReadonlyMap<GraphicMaterial, number>): number {
   return command instanceof Draw2DCommand ? (materials.get(command.material) ?? 0) : -1
+}
+
+function depthOf(command: DrawCommand): number {
+  return command instanceof Draw2DCommand ? command.depth : 0
 }

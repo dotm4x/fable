@@ -2,7 +2,7 @@ import { type GraphicMesh2D } from '#/graphics/geometry/mesh2d.js'
 import { RasterImageFormat } from '#/graphics/resources/image.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type Shader, ShaderLanguage } from '#/graphics/resources/shader.js'
-import { type RenderTarget } from '#/graphics/resources/targets/target.js'
+import { type RenderTarget, RenderTargetFormat } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 import { ImageTexture } from '#/graphics/resources/textures/image.js'
 
@@ -59,6 +59,7 @@ export class GlPrograms {
     if (material.destroyed) {
       throw new Error('The material is destroyed.')
     }
+
     const cached = this._programs.get(material)
     if (cached !== undefined) return cached
     if (
@@ -208,6 +209,7 @@ export class GlMeshes {
       gl.deleteBuffer(mesh.vertexBuffer)
       gl.deleteBuffer(mesh.indexBuffer)
     }
+
     this._meshes.clear()
   }
 
@@ -221,17 +223,56 @@ export class GlMeshes {
   }
 }
 
-/** Uploads and caches textures for bindings, including a white fallback. */
+/** An uploaded texture and the size of its source data. */
+interface GlTextureEntry {
+  readonly texture: WebGLTexture
+  readonly bytes: number
+}
+
+/**
+ * Uploads and caches textures for bindings, including a white fallback.
+ *
+ * The cache keeps least recently used textures while they fit the VRAM budget.
+ * Evicted textures are re-uploaded from their source when used again.
+ */
 export class GlTextures {
   private readonly _gl: WebGL2RenderingContext
-  private readonly _textures: Map<TextureBinding, WebGLTexture> = new Map<
+  private readonly _textures: Map<TextureBinding, GlTextureEntry> = new Map<
     TextureBinding,
-    WebGLTexture
+    GlTextureEntry
   >()
-  private _whiteTexture: WebGLTexture | undefined
 
-  public constructor(gl: WebGL2RenderingContext) {
+  private _whiteTexture: WebGLTexture | undefined
+  private _budget: number
+  private _bytes: number = 0
+
+  public constructor(gl: WebGL2RenderingContext, budget: number) {
     this._gl = gl
+    this._budget = budget
+  }
+
+  /** Bytes of texture data currently uploaded. */
+  public get bytes(): number {
+    return this._bytes
+  }
+
+  /** Number of cached textures, excluding the white fallback. */
+  public get count(): number {
+    return this._textures.size
+  }
+
+  /** VRAM budget of the cache, in bytes. */
+  public get budget(): number {
+    return this._budget
+  }
+
+  public set budget(value: number) {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new RangeError('The texture budget must be a nonnegative number.')
+    }
+
+    this._budget = value
+    this.trim()
   }
 
   /** Returns the white texture used for unused slots. */
@@ -266,12 +307,18 @@ export class GlTextures {
     if (binding.texture.destroyed) {
       throw new Error('The texture is destroyed.')
     }
+
     if (!(binding.texture instanceof ImageTexture)) {
       throw new Error('The WebGL backend only supports image and render target textures.')
     }
 
     const cached = this._textures.get(binding)
-    if (cached !== undefined) return cached
+    if (cached !== undefined) {
+      this._textures.delete(binding)
+      this._textures.set(binding, cached)
+
+      return cached.texture
+    }
 
     const gl = this._gl
     const image = binding.texture.image
@@ -290,18 +337,39 @@ export class GlTextures {
     )
     applySampler(gl, binding.sampler, binding.sampler.mipmaps)
     if (binding.sampler.mipmaps) gl.generateMipmap(gl.TEXTURE_2D)
-    this._textures.set(binding, texture)
+    const bytes = image.dataSize
+    this._textures.set(binding, { texture, bytes })
+    this._bytes += bytes
+    this.trim()
 
     return texture
   }
 
+  /** Releases every cached texture, keeping the white fallback. */
+  public release(): void {
+    for (const entry of this._textures.values()) this._gl.deleteTexture(entry.texture)
+    this._textures.clear()
+    this._bytes = 0
+  }
+
   /** Deletes every uploaded texture. */
   public clear(): void {
-    for (const texture of this._textures.values()) this._gl.deleteTexture(texture)
-    this._textures.clear()
+    this.release()
     if (this._whiteTexture !== undefined) {
       this._gl.deleteTexture(this._whiteTexture)
       this._whiteTexture = undefined
+    }
+  }
+
+  private trim(): void {
+    while (this._bytes > this._budget && this._textures.size > 1) {
+      const oldest = this._textures.keys().next()
+      if (oldest.done === true) return
+      const entry = this._textures.get(oldest.value)
+      if (entry === undefined) return
+      this._textures.delete(oldest.value)
+      this._gl.deleteTexture(entry.texture)
+      this._bytes -= entry.bytes
     }
   }
 }
@@ -322,9 +390,12 @@ export class GlTargets {
 
     const gl = this._gl
     const size = target.size
+    const float = target.format === RenderTargetFormat.rgba16f
+    const internalFormat = float ? gl.RGBA16F : gl.RGBA8
+    const type = float ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE
     const texture = required(gl.createTexture(), 'Unable to create a target texture.')
     gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size.x, size.y, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, size.x, size.y, 0, gl.RGBA, type, null)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -333,7 +404,7 @@ export class GlTargets {
     const resolveFramebuffer = this.createFramebuffer(texture)
     const multisampled = target.sampleCount > 1
     const renderbuffer = multisampled
-      ? this.createRenderbuffer(target.sampleCount, size.x, size.y)
+      ? this.createRenderbuffer(target.sampleCount, internalFormat, size.x, size.y)
       : undefined
     const framebuffer = multisampled
       ? this.createFramebuffer(renderbuffer ?? null, true)
@@ -380,6 +451,7 @@ export class GlTargets {
       if (target.renderbuffer !== undefined) gl.deleteRenderbuffer(target.renderbuffer)
       gl.deleteTexture(target.texture)
     }
+
     this._targets.clear()
   }
 
@@ -395,6 +467,7 @@ export class GlTargets {
     } else {
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, attachment, 0)
     }
+
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
@@ -407,13 +480,14 @@ export class GlTargets {
 
   private createRenderbuffer(
     sampleCount: number,
+    internalFormat: number,
     width: number,
     height: number,
   ): WebGLRenderbuffer {
     const gl = this._gl
     const renderbuffer = required(gl.createRenderbuffer(), 'Unable to create a renderbuffer.')
     gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer)
-    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.RGBA8, width, height)
+    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, internalFormat, width, height)
     gl.bindRenderbuffer(gl.RENDERBUFFER, null)
 
     return renderbuffer

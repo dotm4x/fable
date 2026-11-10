@@ -11,6 +11,7 @@ import {
   GraphicVertex2D,
   Matrix3x2,
   RenderContext,
+  RenderSortMode,
   RenderSpace,
   RenderSpacePriority,
   RenderTarget,
@@ -71,7 +72,7 @@ describe('RenderSpace', () => {
     })
   }
 
-  function commandAt(x: number, y: number, order: number = 0): Draw2DCommand {
+  function commandAt(x: number, y: number, order: number = 0, depth: number = 0): Draw2DCommand {
     const mesh = new GraphicMesh2D([
       new GraphicVertex2D(new Vector2(x - 10, y - 10), new Vector2(0, 0), Color.white),
       new GraphicVertex2D(new Vector2(x + 10, y - 10), new Vector2(1, 0), Color.white),
@@ -83,6 +84,7 @@ describe('RenderSpace', () => {
       material: createMaterial(),
       transform: Matrix3x2.identity,
       order,
+      depth,
     })
   }
 
@@ -240,5 +242,27 @@ describe('RenderSpace', () => {
 
     space.destroy()
     expect(space.entries.size).toBe(0)
+  })
+
+  it('draws farthest commands first when sorting by depth', () => {
+    const near = new CommandDrawable([commandAt(0, 0, 0, 1)])
+    const far = new CommandDrawable([commandAt(0, 0, 0, 3)])
+    const middle = new CommandDrawable([commandAt(0, 0, 0, 2)])
+    const space = new RenderSpace({
+      identifier: 'space',
+      camera: new Camera2D(),
+      sort: RenderSortMode.depth,
+      entries: [near, far, middle],
+    })
+    const context = new RenderContext(
+      0,
+      new Camera2D(),
+      new Viewport(new Vector2(0, 0), new Vector2(640, 360)),
+    )
+
+    const depths = (space.collect(context) as Draw2DCommand[]).map((command) => command.depth)
+
+    expect(depths).toEqual([3, 2, 1])
+    space.destroy()
   })
 })

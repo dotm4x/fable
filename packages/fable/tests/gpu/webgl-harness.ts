@@ -30,6 +30,12 @@ export class FakeWebGl2 {
   public readonly TEXTURE_2D: number = 0x0de1
   public readonly TEXTURE0: number = 0x84c0
   public readonly RGBA: number = 0x1908
+  public readonly RGBA8: number = 0x8058
+  public readonly RGBA16F: number = 0x881a
+  public readonly HALF_FLOAT: number = 0x140b
+  public readonly RENDERBUFFER: number = 0x8d41
+  public readonly READ_FRAMEBUFFER: number = 0x8ca8
+  public readonly DRAW_FRAMEBUFFER: number = 0x8ca9
   public readonly SRGB8_ALPHA8: number = 0x8c43
   public readonly UNSIGNED_BYTE: number = 0x1401
   public readonly TEXTURE_WRAP_S: number = 0x2802
@@ -124,6 +130,16 @@ export class FakeWebGl2 {
 
   public checkFramebufferStatus(): number {
     return this.FRAMEBUFFER_COMPLETE
+  }
+
+  public getExtension(name: string): unknown {
+    if (name !== 'EXT_texture_filter_anisotropic') return null
+
+    return { MAX_TEXTURE_MAX_ANISOTROPY_EXT: 0x84ff, TEXTURE_MAX_ANISOTROPY_EXT: 0x84fe }
+  }
+
+  public getParameter(): number {
+    return 16
   }
 }
 
