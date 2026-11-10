@@ -21,7 +21,7 @@ export class MyScenesModule extends ScenesModule {
     const mode: BallsMode = params.get('mode') === 'nodes' ? 'nodes' : 'single'
     const requestedCount = Number(params.get('count') ?? 1000)
     const count = Number.isFinite(requestedCount)
-      ? Math.min(20000, Math.max(1, Math.floor(requestedCount)))
+      ? Math.min(100000, Math.max(1, Math.floor(requestedCount)))
       : 1000
     const balls = new BallsScene(snakeMaterial, camera, mode, count)
     let initial: Node2D = main
